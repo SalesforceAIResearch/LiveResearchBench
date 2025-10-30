@@ -31,9 +31,6 @@ cp .env.example .env
 # Edit .env and add your API keys:
 #   OPENAI_API_KEY=your-key
 #   GEMINI_API_KEY=your-key
-
-# Run tests to verify installation
-./tests/run_all_tests.sh
 ```
 
 ### Basic Usage
