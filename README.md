@@ -41,28 +41,26 @@ cp .env.example .env
 **1. Preprocess Reports** (Extract MD files to JSON)
 
 ```bash
-# Preprocess reports from your experiment directories
-# exp_name should match folder names under your base-path
-python preprocess.py my_experiment_name \
-    --base-path /path/to/your/experiments \
-    --output-dir extracted_reports/
+# Process all models in a directory
+python preprocess.py /path/to/model_outputs
 
-# Example: Multiple experiments at once
-python preprocess.py gpt4_experiment gpt5_experiment claude_experiment \
-    --base-path /path/to/your/experiments \
-    --output-dir extracted_reports/
+# Or process specific models only
+python preprocess.py /path/to/model_outputs -m gpt-5-search gemini-pro
+
+# With custom output directory
+python preprocess.py /path/to/model_outputs -o extracted_reports/
 ```
 
 **Expected directory structure:**
 ```
-/path/to/your/experiments/
-├── my_experiment_name/
-│   └── same_bb/
-│       └── task_name/
-│           └── config_name/
-│               └── model_name/
-│                   └── sd0/
-│                       └── report_*.md
+/path/to/model_outputs/
+├── model_name_1/
+│   ├── qid_<qid>_report.md
+│   ├── qid_<qid>_report.md
+│   └── ...
+├── model_name_2/
+│   ├── qid_<qid>_report.md
+│   └── ...
 ```
 
 **2. Grade Single File**

@@ -43,8 +43,11 @@ USE_REALTIME_PLACEHOLDERS = False  # Set to True to use {{current_year}} etc.
 
 def check_api_key() -> bool:
     """Check if OpenAI API key is configured"""
-    from dotenv import load_dotenv
-    load_dotenv()
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass
     
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key or api_key == "your-openai-key-here":
@@ -52,6 +55,20 @@ def check_api_key() -> bool:
         print("   Please set up your .env file with a valid API key")
         return False
     return True
+
+
+def load_report_content(report: Dict[str, Any]) -> str:
+    """Load report content from file path"""
+    report_file = report.get("report_file_path", "")
+    if not report_file or not os.path.exists(report_file):
+        return ""
+    
+    try:
+        with open(report_file, 'r', encoding='utf-8') as f:
+            return f.read()
+    except Exception as e:
+        print(f"   ⚠️  Error loading report from {report_file}: {e}")
+        return ""
 
 
 async def test_presentation_grading():
@@ -76,7 +93,7 @@ async def test_presentation_grading():
     for i, report in enumerate(reports, 1):
         query_id = report.get("query_id", f"report_{i}")
         query = report.get("query", "No query available")
-        content = report.get("generated", "")
+        content = load_report_content(report)
         
         print(f"\n📝 Grading report {i}/{len(reports)} (query_id: {query_id})...")
         print(f"   Query: {query[:100]}...")
@@ -134,7 +151,7 @@ async def test_consistency_grading():
     for i, report in enumerate(reports, 1):
         query_id = report.get("query_id", f"report_{i}")
         query = report.get("query", "No query available")
-        content = report.get("generated", "")
+        content = load_report_content(report)
         
         print(f"\n📝 Grading report {i}/{len(reports)} (query_id: {query_id})...")
         print(f"   Query: {query[:100]}...")
@@ -189,7 +206,7 @@ async def test_coverage_grading(benchmark_data: dict):
     results = []
     for i, report in enumerate(reports, 1):
         query_id = report.get("query_id", f"report_{i}")
-        content = report.get("generated", "")
+        content = load_report_content(report)
         
         # Get question and checklist from benchmark dataset
         query = get_question_for_qid(benchmark_data, query_id)
@@ -260,7 +277,7 @@ async def test_citation_grading():
     for i, report in enumerate(reports, 1):
         query_id = report.get("query_id", f"report_{i}")
         query = report.get("query", "No query available")
-        content = report.get("generated", "")
+        content = load_report_content(report)
         
         print(f"\n📝 Grading report {i}/{len(reports)} (query_id: {query_id})...")
         print(f"   Query: {query[:100]}...")

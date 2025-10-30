@@ -10,6 +10,28 @@ Usage:
     python preprocess.py exp_name --base-path /path/to/reports/ --output-dir out/
 """
 
+"""
+Preprocess research reports from directory structure to JSON.
+
+Expected directory structure:
+    base_path/
+        model_name_1/
+            qid_<qid>_report.md
+        model_name_2/
+            qid_<qid>_report.md
+        ...
+
+Example usage:
+    # Process all models in directory
+    python preprocess.py /path/to/model_outputs
+    
+    # Process specific models only
+    python preprocess.py /path/to/model_outputs -m gpt-5-search gemini-pro
+    
+    # With custom output directory
+    python preprocess.py /path/to/model_outputs -o my_reports
+"""
+
 import argparse
 import sys
 from liveresearchbench.common.io_utils import preprocess_reports
@@ -17,21 +39,34 @@ from liveresearchbench.common.io_utils import preprocess_reports
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Preprocess research reports from directory structure to JSON"
+        description="Preprocess research reports from directory structure to JSON",
+        epilog="""
+Expected directory structure:
+  base_path/
+    model_name_1/
+      qid_<qid>_report.md
+    model_name_2/
+      qid_<qid>_report.md
+    ...
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter
     )
     
-    parser.add_argument("exp_names", nargs="+", help="Experiment names to process")
-    
     parser.add_argument(
-        "--base-path",
-        required=True,
-        help="Base path to experiments (directory containing experiment folders)"
+        "base_path",
+        help="Base directory containing model subdirectories (each with qid_*_report.md files)"
     )
     
     parser.add_argument(
-        "--output-dir",
+        "-m", "--models",
+        nargs="+",
+        help="Specific model names to process (default: process all subdirectories)"
+    )
+    
+    parser.add_argument(
+        "-o", "--output-dir",
         default="extracted_reports",
-        help="Output directory for JSON files"
+        help="Output directory for JSON file (default: extracted_reports)"
     )
     
     parser.add_argument(
@@ -41,7 +76,7 @@ def main():
     )
     
     parser.add_argument(
-        "--verbose",
+        "-v", "--verbose",
         action="store_true",
         help="Enable verbose logging"
     )
@@ -51,18 +86,19 @@ def main():
     try:
         json_file = preprocess_reports(
             base_path=args.base_path,
-            exp_names=args.exp_names,
+            model_names=args.models,
             output_dir=args.output_dir,
             verbose=args.verbose,
             use_realtime=args.use_realtime
         )
         
-        print(f"\n✅ Preprocessing completed successfully!")
-        print(f"📄 Output JSON: {json_file}")
         return 0
         
     except Exception as e:
         print(f"\n❌ Error during preprocessing: {e}")
+        import traceback
+        if args.verbose:
+            traceback.print_exc()
         return 1
 
 

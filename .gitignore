@@ -10,6 +10,7 @@ configs/batch_config.yaml
 
 # Results and outputs
 results/
+test_*/
 extracted_reports*/
 *.csv
 *.json

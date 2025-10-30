@@ -72,7 +72,7 @@ def load_liveresearchbench_dataset(
         {
             'qid': {
                 'question': 'research query',
-                'checklists': ['checklist item 1', 'checklist item 2', ...] (if available)
+                'checklists': ['checklist item 1', 'checklist item 2', ...]
             }
         }
     """
@@ -80,7 +80,9 @@ def load_liveresearchbench_dataset(
         logger.info(f"Loading dataset {dataset_name}/{subset}/{split} from HuggingFace...")
         dataset = load_dataset(dataset_name, subset, split=split)
         
-        benchmark_data = {}
+        # Group by qid (one row per checklist item, so need to aggregate)
+        from collections import defaultdict
+        grouped_data = defaultdict(lambda: {'question': '', 'checklists': []})
         
         for row in dataset:
             qid = row['qid']
@@ -88,19 +90,29 @@ def load_liveresearchbench_dataset(
             # Choose version based on use_realtime flag
             if use_realtime:
                 question = replace_placeholders(row.get('question', ''), use_realtime=True)
-                checklists_raw = row.get('checklist', [])
-                checklists = [replace_placeholders(item, use_realtime=True) for item in (checklists_raw or [])]
+                checklist_item = replace_placeholders(row.get('checklist', ''), use_realtime=True)
             else:
                 question = row.get('question_no_placeholder', '')
-                checklists = row.get('checklist_no_placeholder', []) or []
+                checklist_item = row.get('checklist_no_placeholder', '')
             
+            # Store question (same for all rows with same qid)
+            if not grouped_data[qid]['question']:
+                grouped_data[qid]['question'] = question
+            
+            # Append this checklist item
+            if checklist_item:
+                grouped_data[qid]['checklists'].append(checklist_item)
+        
+        # Convert to final format
+        benchmark_data = {}
+        for qid, data in grouped_data.items():
             benchmark_data[qid] = {
                 'qid': qid,
-                'question': question,
-                'checklists': checklists
+                'question': data['question'],
+                'checklists': data['checklists']
             }
         
-        logger.info(f"Loaded {len(benchmark_data)} entries from HuggingFace")
+        logger.info(f"Loaded {len(benchmark_data)} unique questions from HuggingFace")
         return benchmark_data
         
     except Exception as e:
@@ -278,63 +290,67 @@ def extract_and_save_report(file_path: str, report_content: str, query_id: str, 
 
 
 def extract_query_id(filename: str) -> Optional[str]:
-    """Extract query ID from filename: report_<qid>_sd0.md"""
-    match = re.match(r'report_(.+)_sd0\.md$', filename)
+    """
+    Extract query ID from report filename.
+    
+    Expected pattern: qid_<qid>_report.md
+    Returns just the ID part without 'qid_' prefix.
+    """
+    match = re.search(r'qid_(.+)_report\.md$', filename)
     return match.group(1) if match else None
 
 
-def find_report_files(base_path: str, exp_names: List[str]) -> List[Dict[str, Any]]:
-    """Find all report files matching the directory structure."""
+def find_report_files(base_path: str, model_names: List[str] = None) -> List[Dict[str, Any]]:
+    """
+    Find all report files in the flat directory structure.
+    
+    Expected structure:
+        base_path/
+            model_name_1/
+                qid_<qid>_report.md
+            model_name_2/
+                qid_<qid>_report.md
+    """
     report_files = []
     base_path = Path(base_path)
     
-    for exp_name in exp_names:
-        exp_path = base_path / exp_name / "same_bb"
-        
-        if not exp_path.exists():
-            logger.warning(f"Experiment path does not exist: {exp_path}")
-            continue
-            
-        logger.info(f"Processing experiment: {exp_name}")
-        
-        for task_path in exp_path.iterdir():
-            if not task_path.is_dir():
-                continue
-                
-            task = task_path.name
-            
-            for config_path in task_path.iterdir():
-                if not config_path.is_dir():
-                    continue
-                    
-                config_name = config_path.name
-                
-                for model_path in config_path.iterdir():
-                    if not model_path.is_dir():
-                        continue
-                        
-                    model_name = model_path.name
-                    
-                    sd0_path = model_path / "sd0"
-                    if not sd0_path.exists():
-                        continue
-                    
-                    for report_file in sd0_path.glob("report_*_sd0.md"):
-                        query_id = extract_query_id(report_file.name)
-                        if not query_id:
-                            logger.warning(f"Could not extract query ID from: {report_file.name}")
-                            continue
-                            
-                        report_files.append({
-                            'file_path': str(report_file),
-                            'exp_name': exp_name,
-                            'task': task,
-                            'config_name': config_name,
-                            'model_name': model_name,
-                            'query_id': query_id
-                        })
+    if not base_path.exists():
+        logger.error(f"Base path does not exist: {base_path}")
+        return report_files
     
-    logger.info(f"Found {len(report_files)} report files")
+    # Get list of model directories
+    if model_names is None:
+        model_dirs = [d for d in base_path.iterdir() if d.is_dir()]
+        logger.info(f"Auto-discovered {len(model_dirs)} model directories")
+    else:
+        model_dirs = [base_path / model_name for model_name in model_names]
+        logger.info(f"Processing {len(model_names)} specified models")
+    
+    for model_dir in model_dirs:
+        if not model_dir.exists() or not model_dir.is_dir():
+            logger.warning(f"Model directory does not exist: {model_dir}")
+            continue
+        
+        model_name = model_dir.name
+        logger.info(f"  📁 {model_name}")
+        
+        report_count = 0
+        for report_file in model_dir.glob("qid_*_report.md"):
+            query_id = extract_query_id(report_file.name)
+            if not query_id:
+                logger.warning(f"    ⚠️  Could not extract query ID from: {report_file.name}")
+                continue
+            
+            report_files.append({
+                'file_path': str(report_file),
+                'model_name': model_name,
+                'query_id': query_id
+            })
+            report_count += 1
+        
+        logger.info(f"    ✅ Found {report_count} reports")
+    
+    logger.info(f"\n📊 Total: {len(report_files)} reports across {len(model_dirs)} models")
     return report_files
 
 
@@ -360,46 +376,11 @@ def process_report_file(file_info: Dict[str, Any], query_mapping: Dict[str, str]
             logger.warning(f"No query found for {query_id} in benchmark dataset")
         
         result = {
-            'exp_name': file_info['exp_name'],
-            'task': file_info['task'],
-            'config_name': file_info['config_name'],
-            'model_name': mapped_model,
-            'original_model_name': original_model,
-            'query_id': file_info['query_id'],
+            'model_name': file_info['model_name'],
+            'query_id': query_id,
             'query': query_text,
-            'original_file_path': file_info['file_path'],
+            'report_file_path': file_info['file_path']
         }
-        
-        if needs_metadata_extraction:
-            metadata = parse_report_metadata(content)
-            report_content = metadata.get('report_content', '')
-            extracted_report_path = ""
-            if report_content:
-                extracted_report_path = extract_and_save_report(
-                    file_info['file_path'], 
-                    report_content, 
-                    file_info['query_id'],
-                    copy_entire_file=False
-                )
-            
-            result.update({
-                'report_file_path': extracted_report_path,
-                'generated': metadata.get('Generated', ''),
-                'seed_id': metadata.get('Seed ID', '0')
-            })
-        else:
-            extracted_report_path = extract_and_save_report(
-                file_info['file_path'], 
-                "", 
-                file_info['query_id'],
-                copy_entire_file=True
-            )
-            
-            result.update({
-                'report_file_path': extracted_report_path,
-                'generated': '',
-                'seed_id': '0'
-            })
         
         return result
         
@@ -409,35 +390,40 @@ def process_report_file(file_info: Dict[str, Any], query_mapping: Dict[str, str]
 
 
 def remove_duplicates(reports: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Remove duplicate reports based on key identifiers."""
+    """Remove duplicate reports based on model_name and query_id."""
     seen = set()
     unique_reports = []
     
     for report in reports:
-        identifier = (
-            report['exp_name'],
-            report['task'], 
-            report['config_name'],
-            report['model_name'],
-            report['query_id']
-        )
+        identifier = (report['model_name'], report['query_id'])
         
         if identifier not in seen:
             seen.add(identifier)
             unique_reports.append(report)
     
-    logger.info(f"Removed {len(reports) - len(unique_reports)} duplicates")
+    if len(reports) != len(unique_reports):
+        logger.info(f"Removed {len(reports) - len(unique_reports)} duplicates")
+    
     return unique_reports
 
 
-def preprocess_reports(base_path: str, exp_names: List[str], output_dir: str, 
+def preprocess_reports(base_path: str, model_names: List[str] = None, output_dir: str = "extracted_reports", 
                       verbose: bool = False, use_realtime: bool = False) -> str:
     """
-    Main preprocessing function to extract reports from directory structure to JSON.
+    Preprocess reports from the simplified flat directory structure.
+    
+    Expected directory structure:
+        base_path/
+            model_name_1/
+                qid_<qid>_report.md
+            model_name_2/
+                qid_<qid>_report.md
+            ...
     
     Args:
-        base_path: Base directory containing experiment folders
-        exp_names: List of experiment names to process
+        base_path: Base directory containing model subdirectories
+        model_names: Optional list of specific model names to process.
+                    If None, processes all subdirectories.
         output_dir: Output directory for JSON file
         verbose: Enable verbose logging
         use_realtime: If True, replace placeholders with current values
@@ -450,14 +436,27 @@ def preprocess_reports(base_path: str, exp_names: List[str], output_dir: str,
     
     os.makedirs(output_dir, exist_ok=True)
     
-    logger.info(f"Loading query mappings from HuggingFace (LiveResearchBench)")
+    logger.info("=" * 80)
+    logger.info("📦 LiveResearchBench - Report Preprocessing")
+    logger.info("=" * 80)
+    
+    # Load query mappings from HuggingFace
+    logger.info("\n🌐 Loading query mappings from HuggingFace...")
     query_mapping = load_query_mapping(use_realtime=use_realtime)
     
     if not query_mapping:
-        raise ValueError("Failed to load query mappings!")
+        raise ValueError("Failed to load query mappings from HuggingFace!")
     
-    logger.info(f"Searching for reports in experiments: {', '.join(exp_names)}")
-    report_files = find_report_files(base_path, exp_names)
+    logger.info(f"✅ Loaded {len(query_mapping)} queries")
+    
+    # Find all report files
+    logger.info(f"\n📂 Scanning directory: {base_path}")
+    if model_names:
+        logger.info(f"🎯 Target models: {', '.join(model_names)}")
+    else:
+        logger.info("🎯 Processing all models in directory")
+    
+    report_files = find_report_files(base_path, model_names)
     
     if not report_files:
         raise ValueError("No report files found!")
@@ -482,9 +481,11 @@ def preprocess_reports(base_path: str, exp_names: List[str], output_dir: str,
     
     output_data = {
         'metadata': {
+            'timestamp': timestamp,
             'total_reports': len(reports),
-            'generated_at': datetime.now().isoformat(),
-            'model_name_mapping': MODEL_NAME_MAPPING
+            'total_models': len(set(r['model_name'] for r in reports)),
+            'base_path': base_path,
+            'use_realtime': use_realtime
         },
         'reports': reports
     }

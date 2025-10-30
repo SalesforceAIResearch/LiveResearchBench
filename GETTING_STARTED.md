@@ -39,11 +39,24 @@ python main.py \
 ### Step 1: Preprocess Your Reports
 
 ```bash
-# Extract MD reports to JSON
-# Replace with your actual experiment names and data path
-python preprocess.py gpt4_deep_research gpt5_deep_research \
-    --base-path /path/to/your/research_outputs \
-    --output-dir extracted_reports
+# Extract MD reports to JSON (all models)
+python preprocess.py /path/to/model_outputs -o extracted_reports
+
+# Or process specific models only
+python preprocess.py /path/to/model_outputs \
+    -m gpt-5-search gemini-pro claude-sonnet-4 \
+    -o extracted_reports
+```
+
+**Expected input structure:**
+```
+/path/to/model_outputs/
+├── gpt-5-search/
+│   ├── qid_<qid>_report.md
+│   └── ...
+├── gemini-pro/
+│   ├── qid_<qid>_report.md
+│   └── ...
 ```
 
 **Output**: `extracted_reports/reports_YYYYMMDD_HHMMSS.json`
