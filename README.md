@@ -255,10 +255,11 @@ Each report is augmented with grading results:
 If you use LiveResearchBench in your research, please cite:
 
 ```bibtex
-@article{liveresearchbench2025,
-  title={LiveResearchBench: A Comprehensive Evaluation Benchmark for AI-Generated Research Reports},
-  author={Your Name et al.},
-  journal={arXiv preprint},
-  year={2025}
+@article{liveresearchbench,
+  title   = {LiveResearchBench: A Live Benchmark for User-Centric Deep Research in the Wild},
+  author  = {Wang, Jiayu and Ming, Yifei and Dulepet, Riya and Chen, Qinglin and Xu, Austin and Ke, Zixuan and Sala, Frederic and Albarghouthi, Aws and Xiong, Caiming and Joty, Shafiq},
+  journal = {arXiv preprint arXiv:2510.14240},
+  year    = {2025},
+  url     = {https://arxiv.org/abs/2510.14240}
 }
 ```
