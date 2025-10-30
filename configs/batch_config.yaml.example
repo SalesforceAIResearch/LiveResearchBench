@@ -1,0 +1,29 @@
+# Batch Grading Configuration Example
+# Copy this to batch_config.yaml and modify as needed
+
+# List of all JSON files to process
+input_files:
+  - /export/xgen-small/mas_eval/report_outputs/extracted_reports_0917_multi_agent_odr_oai/reports_20250919_041431.json
+  - /export/xgen-small/mas_eval/single_agent_100_output/reports_20250919_062728.json
+  - /export/xgen-small/mas_eval/single_agent_100_output/reports_20250919_193026.json
+  # Add more JSON file paths here
+
+# Model name mapping for CSV output (optional)
+model_names:
+  /export/xgen-small/mas_eval/report_outputs/extracted_reports_0917_multi_agent_odr_oai/reports_20250919_041431.json: openai-deep-research
+  /export/xgen-small/mas_eval/single_agent_100_output/reports_20250919_062728.json: gpt-4.1-search
+  /export/xgen-small/mas_eval/single_agent_100_output/reports_20250919_193026.json: gpt-5-search
+  # Add more mappings here
+
+# Criteria to evaluate (choose 1-5)
+# Available: presentation, consistency, coverage, citation, depth
+criteria:
+  - presentation     # ❶ Presentation & Organization (checklist-based)
+  - consistency      # ❷ Factual & Logical Consistency (pointwise)
+  - coverage         # ❸ Coverage & Comprehensiveness (checklist-based)
+  - citation         # ❺ Citation Association (pointwise)
+  # Note: depth requires pairwise comparison setup
+
+# Coverage checklist file (required if using coverage criterion)
+coverage_checklist: data/checklists/coverage_checklist.csv
+

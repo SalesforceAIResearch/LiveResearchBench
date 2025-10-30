@@ -1,0 +1,30 @@
+# Environment
+.env
+.venv/
+venv/
+*.pyc
+__pycache__/
+
+# Results and outputs
+results/
+extracted_reports*/
+*.csv
+*.json
+!configs/*.json
+!data/**/*.csv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python
+*.egg-info/
+dist/
+build/
+
+# OS
+.DS_Store
+Thumbs.db
+
