@@ -1,10 +1,10 @@
 # Getting Started with LiveResearchBench
 
-## Installation (5 minutes)
+## Installation 
 
 ```bash
 # 1. Navigate to the project
-cd /export/xgen-small/LiveResearchBench
+cd LiveResearchBench
 
 # 2. Install dependencies with uv
 uv sync
@@ -17,21 +17,15 @@ GEMINI_API_KEY=your-gemini-key-here
 EOF
 ```
 
-## Verify Installation (1 minute)
+## Quick Test With a Single Report
 
-Run the test suite to verify everything is set up correctly:
 
-```bash
-./tests/run_all_tests.sh
-```
-
-## Quick Test (2 minutes)
-
-Test with a small example:
 
 ```bash
 # Test preprocessing
-python preprocess.py test_exp --output-dir test_output
+python preprocess.py my_test_experiment \
+    --base-path /path/to/your/test/data \
+    --output-dir test_output
 
 # Test single file grading
 python main.py \
@@ -40,14 +34,15 @@ python main.py \
     --provider gemini
 ```
 
-## Production Workflow
+## Batch Processing
 
 ### Step 1: Preprocess Your Reports
 
 ```bash
 # Extract MD reports to JSON
-python preprocess.py exp_name1 exp_name2 \
-    --base-path /path/to/your/reports \
+# Replace with your actual experiment names and data path
+python preprocess.py gpt4_deep_research gpt5_deep_research \
+    --base-path /path/to/your/research_outputs \
     --output-dir extracted_reports
 ```
 
@@ -151,15 +146,9 @@ python preprocess.py my_exp \
     --verbose
 ```
 
-### Coverage Criterion Missing Checklist
+### Coverage Criterion Requires Internet Connection
 
-```bash
-# Make sure checklist CSV exists:
-ls data/checklists/coverage_checklist.csv
-
-# Or specify custom path in batch_config.yaml:
-coverage_checklist: /path/to/your/checklist.csv
-```
+Coverage checklists are automatically loaded from the [Salesforce/LiveResearchBench](https://huggingface.co/datasets/Salesforce/LiveResearchBench) dataset on HuggingFace. No local files needed!
 
 ## Evaluation Criteria Reference
 

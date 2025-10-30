@@ -4,8 +4,21 @@
 
 set -e
 
-BASE_PATH="/export/xgen-small/mas_eval"
+# Configuration - Set these variables to your actual paths
+BASE_PATH="${BASE_PATH:-/path/to/your/experiments}"
 OUTPUT_DIR="extracted_reports_$(date +%Y%m%d_%H%M%S)"
+
+if [ "$BASE_PATH" = "/path/to/your/experiments" ]; then
+    echo "❌ Error: Please set BASE_PATH to your actual data location"
+    echo "   Either:"
+    echo "     1. Edit this script and change BASE_PATH variable"
+    echo "     2. Set environment variable: export BASE_PATH=/your/path"
+    echo ""
+    echo "   Example:"
+    echo "     export BASE_PATH=/home/user/research_data"
+    echo "     ./scripts/preprocess_all.sh"
+    exit 1
+fi
 
 echo "🔍 Preprocessing all experiments..."
 echo "📁 Base path: ${BASE_PATH}"
@@ -14,9 +27,9 @@ echo "💾 Output: ${OUTPUT_DIR}"
 # List of experiments to preprocess
 # Modify this list based on your experiments
 EXPERIMENTS=(
-    "multi_agent_odr_oai"
-    "single_agent_gpt_4.1"
-    "single_agent_gpt_5"
+    "experiment1"
+    "experiment2"
+    "experiment3"
 )
 
 # Run preprocessing
@@ -28,4 +41,3 @@ python preprocess.py "${EXPERIMENTS[@]}" \
 echo ""
 echo "✅ Preprocessing complete!"
 echo "📄 JSON files created in: ${OUTPUT_DIR}"
-

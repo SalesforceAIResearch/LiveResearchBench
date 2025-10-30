@@ -41,17 +41,42 @@ cp .env.example .env
 **1. Preprocess Reports** (Extract MD files to JSON)
 
 ```bash
-python preprocess.py exp1 exp2 exp3 --output-dir extracted_reports/
+# Preprocess reports from your experiment directories
+# exp_name should match folder names under your base-path
+python preprocess.py my_experiment_name \
+    --base-path /path/to/your/experiments \
+    --output-dir extracted_reports/
+
+# Example: Multiple experiments at once
+python preprocess.py gpt4_experiment gpt5_experiment claude_experiment \
+    --base-path /path/to/your/experiments \
+    --output-dir extracted_reports/
+```
+
+**Expected directory structure:**
+```
+/path/to/your/experiments/
+├── my_experiment_name/
+│   └── same_bb/
+│       └── task_name/
+│           └── config_name/
+│               └── model_name/
+│                   └── sd0/
+│                       └── report_*.md
 ```
 
 **2. Grade Single File**
 
 ```bash
 # Single criterion
-python main.py --input reports.json --criteria presentation --provider gemini
+python main.py \
+    --input extracted_reports/reports_20250101_120000.json \
+    --criteria presentation \
+    --provider gemini
 
 # Multiple criteria
-python main.py --input reports.json \
+python main.py \
+    --input extracted_reports/reports_20250101_120000.json \
     --criteria presentation,consistency,citation,coverage \
     --provider openai --model gpt-5-2025-08-07
 ```
@@ -123,16 +148,14 @@ criteria:
   - consistency
   - coverage
   - citation
-
-# Coverage checklist (required for coverage criterion)
-coverage_checklist: data/checklists/coverage_checklist.csv
+  # Note: Questions and checklists are automatically loaded from HuggingFace
 ```
 
 ## Advanced Usage
 
 ### Multi-Provider Grading & Averaging
 
-For more reliable results, grade with both GPT-5 and Gemini, then average:
+For more reliable results, grade with both GPT-5 and Gemini-2.5-Pro, then average:
 
 ```bash
 # Method 1: Automated script
@@ -241,28 +264,3 @@ If you use LiveResearchBench in your research, please cite:
   year={2025}
 }
 ```
-
-## License
-
-See [LICENSE.txt](LICENSE.txt) for details.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
-
-## Support
-
-For issues or questions:
-1. Check existing [GitHub Issues](https://github.com/your-org/LiveResearchBench/issues)
-2. Review the documentation in `docs/`
-3. Open a new issue with detailed information
-
----
-
-**Key Features:**
-- ✅ Multiple evaluation protocols optimized for each criterion
-- ✅ Multi-provider support (GPT-5, Gemini)
-- ✅ Automatic averaging across providers
-- ✅ Batch processing for multiple models
-- ✅ Resume capability for interrupted runs
-- ✅ High agreement with human judgments

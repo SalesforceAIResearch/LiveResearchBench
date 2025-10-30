@@ -142,9 +142,3 @@ If you use this dataset, please cite:
 }
 ```
 
-## Related Files
-
-- `liveresearchbench/common/io_utils.py`: Dataset loading functions
-- `tests/test_real_grading.py`: Example usage in tests
-- `scripts/download_dataset.sh`: Dataset download script
-

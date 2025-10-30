@@ -24,20 +24,14 @@ def main():
     
     parser.add_argument(
         "--base-path",
-        default="/export/xgen-small/mas_eval/openmas_link/open_deep_research/research_outputs",
-        help="Base path to experiments"
+        required=True,
+        help="Base path to experiments (directory containing experiment folders)"
     )
     
     parser.add_argument(
         "--output-dir",
         default="extracted_reports",
         help="Output directory for JSON files"
-    )
-    
-    parser.add_argument(
-        "--query-csv",
-        default=None,
-        help="Path to query mapping CSV file (optional, defaults to HuggingFace dataset)"
     )
     
     parser.add_argument(
@@ -59,7 +53,6 @@ def main():
             base_path=args.base_path,
             exp_names=args.exp_names,
             output_dir=args.output_dir,
-            query_csv=args.query_csv,
             verbose=args.verbose,
             use_realtime=args.use_realtime
         )

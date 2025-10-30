@@ -5,6 +5,9 @@ venv/
 *.pyc
 __pycache__/
 
+# Private configuration (keep your actual paths private)
+configs/batch_config.yaml
+
 # Results and outputs
 results/
 extracted_reports*/

@@ -2,7 +2,6 @@
 
 import os
 import json
-import csv
 import logging
 import re
 import pandas as pd
@@ -186,36 +185,21 @@ def load_report_content(report_file_path: str) -> str:
         return ""
 
 
-def load_query_mapping(csv_path: str = None, use_realtime: bool = False) -> Dict[str, str]:
+def load_query_mapping(use_realtime: bool = False) -> Dict[str, str]:
     """
-    Load query mapping from HuggingFace (default) or CSV file (legacy).
+    Load query mapping from HuggingFace.
     
     Args:
-        csv_path: Optional path to CSV file. If None, loads from HuggingFace.
-        use_realtime: If True and loading from HF, replace placeholders with current values
+        use_realtime: If True, replace placeholders with current values
         
     Returns:
         Dictionary mapping qid to question text
     """
-    if csv_path is None:
-        # Load from HuggingFace
-        benchmark_data = load_liveresearchbench_dataset(use_realtime=use_realtime)
-        query_mapping = {qid: data['question'] for qid, data in benchmark_data.items()}
-        logger.info(f"Loaded {len(query_mapping)} query mappings from HuggingFace")
-        return query_mapping
-    
-    # Legacy: Load from CSV file
-    try:
-        df = pd.read_csv(csv_path)
-        if 'question' in df.columns:
-            query_mapping = dict(zip(df['qid'], df['question']))
-        else:
-            query_mapping = dict(zip(df['qid'], df['Query']))
-        logger.info(f"Loaded {len(query_mapping)} query mappings from {csv_path}")
-        return query_mapping
-    except Exception as e:
-        logger.error(f"Error loading query mapping from {csv_path}: {e}")
-        return {}
+    # Load from HuggingFace
+    benchmark_data = load_liveresearchbench_dataset(use_realtime=use_realtime)
+    query_mapping = {qid: data['question'] for qid, data in benchmark_data.items()}
+    logger.info(f"Loaded {len(query_mapping)} query mappings from HuggingFace")
+    return query_mapping
 
 
 def parse_report_metadata(content: str) -> Dict[str, Any]:
@@ -373,7 +357,7 @@ def process_report_file(file_info: Dict[str, Any], query_mapping: Dict[str, str]
             query_text = query_mapping.get(clean_query_id, '')
         
         if not query_text:
-            logger.warning(f"No query found for {query_id} in benchmark CSV")
+            logger.warning(f"No query found for {query_id} in benchmark dataset")
         
         result = {
             'exp_name': file_info['exp_name'],
@@ -447,8 +431,7 @@ def remove_duplicates(reports: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 def preprocess_reports(base_path: str, exp_names: List[str], output_dir: str, 
-                      query_csv: str = None, verbose: bool = False, 
-                      use_realtime: bool = False) -> str:
+                      verbose: bool = False, use_realtime: bool = False) -> str:
     """
     Main preprocessing function to extract reports from directory structure to JSON.
     
@@ -456,9 +439,8 @@ def preprocess_reports(base_path: str, exp_names: List[str], output_dir: str,
         base_path: Base directory containing experiment folders
         exp_names: List of experiment names to process
         output_dir: Output directory for JSON file
-        query_csv: Optional path to CSV file. If None, loads from HuggingFace (default)
         verbose: Enable verbose logging
-        use_realtime: If True, replace placeholders with current values (only for HF loading)
+        use_realtime: If True, replace placeholders with current values
     
     Returns:
         Path to the generated JSON file
@@ -468,12 +450,8 @@ def preprocess_reports(base_path: str, exp_names: List[str], output_dir: str,
     
     os.makedirs(output_dir, exist_ok=True)
     
-    if query_csv:
-        logger.info(f"Loading query mappings from CSV: {query_csv}")
-    else:
-        logger.info(f"Loading query mappings from HuggingFace (LiveResearchBench)")
-    
-    query_mapping = load_query_mapping(query_csv, use_realtime=use_realtime)
+    logger.info(f"Loading query mappings from HuggingFace (LiveResearchBench)")
+    query_mapping = load_query_mapping(use_realtime=use_realtime)
     
     if not query_mapping:
         raise ValueError("Failed to load query mappings!")

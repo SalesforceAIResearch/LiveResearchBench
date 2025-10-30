@@ -13,7 +13,10 @@ from liveresearchbench.common.io_utils import load_json, save_json, load_report_
 from liveresearchbench.graders.checklist_grader import ChecklistGrader
 from liveresearchbench.graders.pointwise_grader import PointwiseGrader
 from liveresearchbench.graders.pairwise_grader import PairwiseGrader
-from liveresearchbench.criteria.coverage import load_coverage_checklist, get_checklists_for_qid
+from liveresearchbench.common.io_utils import (
+    load_liveresearchbench_dataset,
+    get_checklists_for_qid
+)
 
 logger = logging.getLogger(__name__)
 
@@ -114,12 +117,14 @@ class BatchEvaluator:
                               report_content: str, **kwargs) -> Dict[str, Any]:
         """Grade using checklist grader."""
         if criterion == 'coverage':
-            # Load checklists
-            checklist_csv = kwargs.get('checklist_csv', 'data/checklists/coverage_checklist.csv')
-            checklist_data = load_coverage_checklist(checklist_csv)
+            # Load checklists from HuggingFace
+            benchmark_data = kwargs.get('benchmark_data')
+            if not benchmark_data:
+                # Load if not provided
+                benchmark_data = load_liveresearchbench_dataset(use_realtime=False)
             
             qid = report_data.get('query_id', '')
-            checklists_for_qid = get_checklists_for_qid(checklist_data, qid)
+            checklists_for_qid = get_checklists_for_qid(benchmark_data, qid)
             
             if not checklists_for_qid:
                 logger.warning(f"No checklists found for qid: {qid}")
@@ -167,7 +172,7 @@ class BatchEvaluator:
             json_file: Path to JSON file
             criteria: List of criteria to evaluate
             force_regrade: Force re-grading even if already graded
-            **kwargs: Additional arguments (e.g., checklist_csv for coverage)
+            **kwargs: Additional arguments (e.g., benchmark_data for coverage)
             
         Returns:
             Path to output JSON file

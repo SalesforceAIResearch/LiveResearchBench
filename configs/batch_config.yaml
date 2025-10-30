@@ -1,4 +1,5 @@
-# Batch Grading Configuration
+# Batch Grading Configuration - PRIVATE
+# This file is gitignored and contains your actual paths
 # Configuration for grading all 18 models
 
 # List of all JSON files to process
@@ -29,6 +30,5 @@ criteria:
   - coverage         # ❸ Coverage & Comprehensiveness
   - citation         # ❺ Citation Association
 
-# Coverage checklist file
-coverage_checklist: data/checklists/coverage_checklist.csv
-
+# Questions and checklists automatically loaded from HuggingFace
+# Dataset: Salesforce/LiveResearchBench
