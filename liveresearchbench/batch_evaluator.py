@@ -95,9 +95,22 @@ class BatchEvaluator:
                 elif criterion in ['consistency', 'citation']:
                     result = await self._grade_pointwise(report_data, criterion, query, report_content)
                 elif criterion == 'depth':
-                    # Pairwise requires special handling (compare with another report)
-                    logger.warning(f"Depth comparison requires pairwise setup - skipping for single report grading")
-                    return report_data
+                    # Load reference report for pairwise comparison
+                    from liveresearchbench.common.reference_reports import load_reference_report, REFERENCE_MODEL_NAME
+                    
+                    query_id = report_data.get('query_id', '')
+                    reference_content = load_reference_report(query_id)
+                    
+                    if not reference_content:
+                        logger.warning(f"No reference report found for {query_id} - skipping depth comparison")
+                        return report_data
+                    
+                    # Don't compare reference model against itself
+                    if report_data.get('model_name') == REFERENCE_MODEL_NAME:
+                        logger.info(f"Skipping depth comparison for reference model itself")
+                        return report_data
+                    
+                    result = await self._grade_pairwise(report_data, criterion, query, report_content, reference_content)
                 else:
                     logger.error(f"Unknown criterion: {criterion}")
                     return report_data
@@ -164,6 +177,30 @@ class BatchEvaluator:
         result['graded_at'] = datetime.now().isoformat()
         return result
     
+    async def _grade_pairwise(self, report_data: Dict, criterion: str, query: str,
+                             report_content: str, reference_content: str) -> Dict[str, Any]:
+        """Grade using pairwise grader (compare against reference report with position-swap)."""
+        from liveresearchbench.common.reference_reports import REFERENCE_MODEL_NAME
+        
+        result = await self.pairwise_grader.compare_depth_async(
+            query=query,
+            report_a=report_content,  # The model being evaluated
+            report_b=reference_content,  # Reference report (open-deep-research)
+            provider=self.provider,
+            model=self.model,
+            swap_positions=True  # Position-swap averaging to mitigate bias (default)
+        )
+        
+        # Add metadata about comparison
+        result['comparison_type'] = 'vs_reference'
+        result['reference_model'] = REFERENCE_MODEL_NAME
+        result['evaluated_model'] = report_data.get('model_name')
+        result['provider'] = self.provider
+        result['model'] = self.model or 'default'
+        result['graded_at'] = datetime.now().isoformat()
+        
+        return result
+    
     def _generate_summary(self, data: Dict[str, Any], criteria: List[str]) -> Dict[str, Any]:
         """
         Generate summary statistics from graded data.
@@ -206,38 +243,117 @@ class BatchEvaluator:
                         score = summary['percentage_addressed']
                     else:
                         continue
+                    model_stats[model_name][criterion].append(score)
+                    overall_stats[criterion].append(score)
+                    
                 elif criterion in ['consistency', 'citation']:
                     # Pointwise: use score
                     score = results.get('score')
                     if score is None:
                         continue
-                else:
-                    continue
-                
-                model_stats[model_name][criterion].append(score)
-                overall_stats[criterion].append(score)
+                    model_stats[model_name][criterion].append(score)
+                    overall_stats[criterion].append(score)
+                    
+                elif criterion == 'depth':
+                    # Pairwise with position-swap: count winners from both comparisons
+                    # winner = 'evaluated_model' means evaluated model beats reference → win
+                    # winner = 'reference_model' means reference beats evaluated model → loss
+                    # winner = 'tie' means neither wins → tie
+                    
+                    winner_1 = results.get('winner_comparison_1', 'tie')
+                    winner_2 = results.get('winner_comparison_2', 'tie')
+                    reference_model = results.get('reference_model', 'open-deep-research')
+                    
+                    # Initialize depth stats if not exists
+                    if 'depth' not in model_stats[model_name]:
+                        model_stats[model_name]['depth'] = {
+                            'wins': 0,  # Evaluated model beats reference
+                            'losses': 0,  # Reference beats evaluated model
+                            'ties': 0,
+                            'total': 0,
+                            'reference_model': reference_model
+                        }
+                    if 'depth' not in overall_stats:
+                        overall_stats['depth'] = {
+                            'wins': 0,
+                            'losses': 0,
+                            'ties': 0,
+                            'total': 0,
+                        }
+                    
+                    # Count wins/losses/ties from BOTH comparisons
+                    for winner in [winner_1, winner_2]:
+                        if winner == 'evaluated_model':
+                            model_stats[model_name]['depth']['wins'] += 1
+                            overall_stats['depth']['wins'] += 1
+                        elif winner == 'reference_model':
+                            model_stats[model_name]['depth']['losses'] += 1
+                            overall_stats['depth']['losses'] += 1
+                        else:  # tie
+                            model_stats[model_name]['depth']['ties'] += 1
+                            overall_stats['depth']['ties'] += 1
+                        
+                        model_stats[model_name]['depth']['total'] += 1
+                        overall_stats['depth']['total'] += 1
         
         # Calculate averages
         model_averages = {}
         for model_name, criteria_scores in model_stats.items():
             model_averages[model_name] = {}
-            for criterion, scores in criteria_scores.items():
-                if scores:
+            for criterion, data in criteria_scores.items():
+                if criterion == 'depth':
+                    # Depth: calculate win rate vs reference (excluding ties)
+                    total = data['total']
+                    wins = data['wins']
+                    losses = data['losses']
+                    ties = data['ties']
+                    decisive_games = wins + losses  # Exclude ties
+                    
+                    if total > 0:
+                        model_averages[model_name][criterion] = {
+                            'wins': wins,  # Times this model beat reference
+                            'losses': losses,  # Times reference beat this model
+                            'ties': ties,
+                            'total': total,
+                            'decisive_games': decisive_games,
+                            'win_rate': (wins / decisive_games * 100) if decisive_games > 0 else 0,
+                            'reference_model': data.get('reference_model', 'open-deep-research')
+                        }
+                elif isinstance(data, list) and data:
+                    # Other criteria: standard statistics
                     model_averages[model_name][criterion] = {
-                        'mean': sum(scores) / len(scores),
-                        'count': len(scores),
-                        'min': min(scores),
-                        'max': max(scores)
+                        'mean': sum(data) / len(data),
+                        'count': len(data),
+                        'min': min(data),
+                        'max': max(data)
                     }
         
         overall_averages = {}
-        for criterion, scores in overall_stats.items():
-            if scores:
+        for criterion, data in overall_stats.items():
+            if criterion == 'depth':
+                # Depth: calculate overall win rate (excluding ties)
+                total = data['total']
+                wins = data['wins']
+                losses = data['losses']
+                ties = data['ties']
+                decisive_games = wins + losses  # Exclude ties
+                
+                if total > 0:
+                    overall_averages[criterion] = {
+                        'wins': wins,
+                        'losses': losses,
+                        'ties': ties,
+                        'total': total,
+                        'decisive_games': decisive_games,
+                        'win_rate': (wins / decisive_games * 100) if decisive_games > 0 else 0,
+                    }
+            elif isinstance(data, list) and data:
+                # Other criteria: standard statistics
                 overall_averages[criterion] = {
-                    'mean': sum(scores) / len(scores),
-                    'count': len(scores),
-                    'min': min(scores),
-                    'max': max(scores)
+                    'mean': sum(data) / len(data),
+                    'count': len(data),
+                    'min': min(data),
+                    'max': max(data)
                 }
         
         # Build summary
@@ -283,10 +399,19 @@ class BatchEvaluator:
             print("-"*80)
             for criterion, stats in overall_results.items():
                 print(f"\n{criterion.upper()}:")
-                print(f"  Mean:  {stats.get('mean', 0):.2f}")
-                print(f"  Min:   {stats.get('min', 0):.2f}")
-                print(f"  Max:   {stats.get('max', 0):.2f}")
-                print(f"  Count: {stats.get('count', 0)}")
+                if criterion == 'depth':
+                    # Depth: show win rate (excluding ties)
+                    wins = stats.get('wins', 0)
+                    losses = stats.get('losses', 0)
+                    ties = stats.get('ties', 0)
+                    decisive = stats.get('decisive_games', wins + losses)
+                    print(f"  Win Rate (vs reference): {stats.get('win_rate', 0):.2f}% ({wins}/{decisive}, {ties} ties)")
+                else:
+                    # Other criteria: standard stats
+                    print(f"  Mean:  {stats.get('mean', 0):.2f}")
+                    print(f"  Min:   {stats.get('min', 0):.2f}")
+                    print(f"  Max:   {stats.get('max', 0):.2f}")
+                    print(f"  Count: {stats.get('count', 0)}")
         
         # Print per-model results
         results_by_model = summary_data.get('results_by_model', {})
@@ -297,11 +422,24 @@ class BatchEvaluator:
             for model_name, criteria_stats in results_by_model.items():
                 print(f"\n📦 {model_name}:")
                 for criterion, stats in criteria_stats.items():
-                    print(f"  {criterion}:")
-                    print(f"    Mean: {stats.get('mean', 0):.2f} | "
-                          f"Min: {stats.get('min', 0):.2f} | "
-                          f"Max: {stats.get('max', 0):.2f} | "
-                          f"Count: {stats.get('count', 0)}")
+                    if criterion == 'depth':
+                        # Depth: show win rate vs reference (excluding ties)
+                        ref_model = stats.get('reference_model', 'reference')
+                        decisive = stats.get('decisive_games', 0)
+                        wins = stats.get('wins', 0)
+                        losses = stats.get('losses', 0)
+                        ties = stats.get('ties', 0)
+                        
+                        print(f"  {criterion} (vs {ref_model}):")
+                        print(f"    Win Rate: {stats.get('win_rate', 0):.2f}% ({wins}/{decisive}) "
+                              f"[W:{wins} L:{losses} T:{ties}]")
+                    else:
+                        # Other criteria: standard stats
+                        print(f"  {criterion}:")
+                        print(f"    Mean: {stats.get('mean', 0):.2f} | "
+                              f"Min: {stats.get('min', 0):.2f} | "
+                              f"Max: {stats.get('max', 0):.2f} | "
+                              f"Count: {stats.get('count', 0)}")
         
         # Print output location
         print("\n" + "="*80)

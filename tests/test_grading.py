@@ -34,7 +34,7 @@ from liveresearchbench.graders.pointwise_grader import PointwiseGrader
 from liveresearchbench.graders.pairwise_grader import PairwiseGrader
 
 # Test configuration
-TEST_DATA_PATH = "data/test_samples/open_deep_research_sample.json"
+TEST_DATA_PATH = "extracted_reports/reports_20251030_221703.json"
 GRADER_MODEL = "gpt-5-2025-08-07"
 PROVIDER = "openai"
 MAX_REPORTS_PER_TEST = 2  # Grade 2 reports per criterion
@@ -78,13 +78,13 @@ async def test_presentation_grading():
     print("="*80)
     
     # Load test data
-    print(f"📂 Loading test data from {TEST_DATA_PATH}...")
+    print(f"Loading test data from {TEST_DATA_PATH}...")
     reports_data = load_json(TEST_DATA_PATH)
     reports = reports_data["reports"][:MAX_REPORTS_PER_TEST]
     print(f"   ✅ Loaded {len(reports)} reports")
     
     # Initialize grader
-    print(f"🤖 Initializing ChecklistGrader with {GRADER_MODEL}...")
+    print(f"Initializing ChecklistGrader with {GRADER_MODEL}...")
     grader = ChecklistGrader()
     print(f"   ✅ Grader initialized")
     
@@ -95,8 +95,8 @@ async def test_presentation_grading():
         query = report.get("query", "No query available")
         content = load_report_content(report)
         
-        print(f"\n📝 Grading report {i}/{len(reports)} (query_id: {query_id})...")
-        print(f"   Query: {query[:100]}...")
+        print(f"\nGrading report {i}/{len(reports)} (query_id: {query_id})...")
+        print(f"   Query: {query}...")
         print(f"   Report length: {len(content)} chars")
         
         result = await grader.grade_presentation_async(
@@ -136,13 +136,13 @@ async def test_consistency_grading():
     print("="*80)
     
     # Load test data
-    print(f"📂 Loading test data from {TEST_DATA_PATH}...")
+    print(f"Loading test data from {TEST_DATA_PATH}...")
     reports_data = load_json(TEST_DATA_PATH)
     reports = reports_data["reports"][:MAX_REPORTS_PER_TEST]
     print(f"   ✅ Loaded {len(reports)} reports")
     
     # Initialize grader
-    print(f"🤖 Initializing PointwiseGrader with {GRADER_MODEL}...")
+    print(f"Initializing PointwiseGrader with {GRADER_MODEL}...")
     grader = PointwiseGrader()
     print(f"   ✅ Grader initialized")
     
@@ -153,8 +153,8 @@ async def test_consistency_grading():
         query = report.get("query", "No query available")
         content = load_report_content(report)
         
-        print(f"\n📝 Grading report {i}/{len(reports)} (query_id: {query_id})...")
-        print(f"   Query: {query[:100]}...")
+        print(f"\nGrading report {i}/{len(reports)} (query_id: {query_id})...")
+        print(f"   Query: {query}...")
         print(f"   Report length: {len(content)} chars")
         
         result = await grader.grade_consistency_async(
@@ -178,8 +178,8 @@ async def test_consistency_grading():
         specific = result.get("specific_issues", [])
         if specific:
             print(f"      Specific issues:")
-            for issue in specific[:3]:  # Show first 3
-                print(f"         - {issue[:80]}...")
+            for issue in specific:  
+                print(f"         - {issue}...")
     
     print(f"\n✅ Test 2 Complete: Graded {len(results)} reports for Consistency")
     return results
@@ -192,13 +192,13 @@ async def test_coverage_grading(benchmark_data: dict):
     print("="*80)
     
     # Load test data
-    print(f"📂 Loading test data from {TEST_DATA_PATH}...")
+    print(f"Loading test data from {TEST_DATA_PATH}...")
     reports_data = load_json(TEST_DATA_PATH)
     reports = reports_data["reports"][:MAX_REPORTS_PER_TEST]
     print(f"   ✅ Loaded {len(reports)} reports")
     
     # Initialize grader
-    print(f"🤖 Initializing ChecklistGrader with {GRADER_MODEL}...")
+    print(f"Initializing ChecklistGrader with {GRADER_MODEL}...")
     grader = ChecklistGrader()
     print(f"   ✅ Grader initialized")
     
@@ -219,8 +219,8 @@ async def test_coverage_grading(benchmark_data: dict):
             print(f"\n⚠️  No checklist found for query_id: {query_id}, skipping...")
             continue
         
-        print(f"\n📝 Grading report {i}/{len(reports)} (query_id: {query_id})...")
-        print(f"   Query: {query[:100]}...")
+        print(f"\nGrading report {i}/{len(reports)} (query_id: {query_id})...")
+        print(f"   Query: {query}...")
         print(f"   Report length: {len(content)} chars")
         print(f"   Checklist items: {len(checklists)}")
         
@@ -262,13 +262,13 @@ async def test_citation_grading():
     print("="*80)
     
     # Load test data
-    print(f"📂 Loading test data from {TEST_DATA_PATH}...")
+    print(f"Loading test data from {TEST_DATA_PATH}...")
     reports_data = load_json(TEST_DATA_PATH)
     reports = reports_data["reports"][:MAX_REPORTS_PER_TEST]
     print(f"   ✅ Loaded {len(reports)} reports")
     
     # Initialize grader
-    print(f"🤖 Initializing PointwiseGrader with {GRADER_MODEL}...")
+    print(f"Initializing PointwiseGrader with {GRADER_MODEL}...")
     grader = PointwiseGrader()
     print(f"   ✅ Grader initialized")
     
@@ -279,8 +279,8 @@ async def test_citation_grading():
         query = report.get("query", "No query available")
         content = load_report_content(report)
         
-        print(f"\n📝 Grading report {i}/{len(reports)} (query_id: {query_id})...")
-        print(f"   Query: {query[:100]}...")
+        print(f"\nGrading report {i}/{len(reports)} (query_id: {query_id})...")
+        print(f"   Query: {query}...")
         print(f"   Report length: {len(content)} chars")
         
         result = await grader.grade_citation_async(
@@ -304,86 +304,150 @@ async def test_citation_grading():
         specific = result.get("specific_issues", [])
         if specific:
             print(f"      Specific issues:")
-            for issue in specific[:3]:  # Show first 3
-                print(f"         - {issue[:80]}...")
+            for issue in specific: 
+                print(f"         - {issue}...")
     
     print(f"\n✅ Test 4 Complete: Graded {len(results)} reports for Citation")
     return results
 
 
 async def test_depth_grading():
-    """Test 5: Analysis Depth grading (pairwise comparison)"""
+    """Test 5: Analysis Depth grading (pairwise comparison vs reference)"""
     print("\n" + "="*80)
-    print("Test 5: Analysis Depth Grading (Pairwise)")
+    print("Test 5: Analysis Depth Grading (Pairwise vs Reference)")
     print("="*80)
     
     # Load test data
-    print(f"📂 Loading test data from {TEST_DATA_PATH}...")
+    print(f"Loading test data from {TEST_DATA_PATH}...")
     reports_data = load_json(TEST_DATA_PATH)
     
-    # Need at least 2 reports for pairwise
-    if len(reports_data["reports"]) < 2:
-        print(f"⚠️  Warning: Need at least 2 reports for pairwise comparison")
-        print(f"   Found only {len(reports_data['reports'])} reports, skipping...")
+    if len(reports_data["reports"]) < 1:
+        print(f"⚠️  Warning: Need at least 1 report for comparison")
         return []
     
-    reports = reports_data["reports"][:2]  # Take first 2 for comparison
-    print(f"   ✅ Loaded 2 reports for comparison")
+    report = reports_data["reports"][0]  # Take first report
+    print(f"   ✅ Loaded {len(reports_data['reports'])} reports")
+    
+    # Load reference report
+    from liveresearchbench.common.reference_reports import load_reference_report, REFERENCE_MODEL_NAME
+    
+    query_id = report.get("query_id", "")
+    print(f"\n📚 Loading reference report for query_id: {query_id}")
+    reference_content = load_reference_report(query_id)
+    
+    if not reference_content:
+        print(f"   ⚠️  No reference report found for {query_id}, skipping...")
+        return []
+    
+    print(f"   ✅ Reference report loaded ({len(reference_content)} chars)")
     
     # Initialize grader
-    print(f"🤖 Initializing PairwiseGrader with {GRADER_MODEL}...")
+    print(f"Initializing PairwiseGrader with {GRADER_MODEL}...")
     grader = PairwiseGrader()
     print(f"   ✅ Grader initialized")
     
     # Get report details
-    report_a = reports[0]
-    report_b = reports[1]
+    query = report.get("query", "No query available")
+    content = load_report_content(report)
     
-    query_id_a = report_a.get("query_id", "report_1")
-    query_id_b = report_b.get("query_id", "report_2")
-    query = report_a.get("query", "No query available")  # Assume same query
-    content_a = report_a.get("generated", "")
-    content_b = report_b.get("generated", "")
-    
-    print(f"\n📝 Comparing two reports...")
-    print(f"   Report A (query_id: {query_id_a})")
-    print(f"      Length: {len(content_a)} chars")
-    print(f"   Report B (query_id: {query_id_b})")
-    print(f"      Length: {len(content_b)} chars")
+    print(f"\n📝 Comparing against reference...")
+    print(f"   Model: {report.get('model_name')}")
+    print(f"   Query ID: {query_id}")
+    print(f"   Report length: {len(content)} chars")
+    print(f"   Reference model: {REFERENCE_MODEL_NAME}")
+    print(f"   Reference length: {len(reference_content)} chars")
     print(f"   Query: {query[:100]}...")
     
-    # Use single judge for faster testing (use_three_judges=False)
+    # Position-swap averaging is enabled by default to mitigate position bias
+    # Report A = model being evaluated, Report B = reference
     result = await grader.compare_depth_async(
         query=query,
-        report_a=content_a,
-        report_b=content_b,
+        report_a=content,
+        report_b=reference_content,
         provider=PROVIDER,
         model=GRADER_MODEL,
-        use_three_judges=False  # Single judge for faster testing
+        swap_positions=True  # Position-swap averaging (default)
     )
     
-    # Display results
-    winner = result.get("winner", "unknown")
-    scores = result.get("scores", {})
-    score_a = scores.get("A", {})
-    score_b = scores.get("B", {})
+    # Display results with actual model names
+    winner_1 = result.get("winner_comparison_1", "unknown")
+    winner_2 = result.get("winner_comparison_2", "unknown")
     justification = result.get("justification", "")
     
-    print(f"   ✅ Comparison complete:")
-    print(f"      Winner: {winner}")
-    print(f"      Report A total: {score_a.get('total', 0)}/25")
-    print(f"         Granularity: {score_a.get('granularity', 0)}/5")
-    print(f"         Insight: {score_a.get('insight', 0)}/5")
-    print(f"         Critique: {score_a.get('critique', 0)}/5")
-    print(f"         Evidence: {score_a.get('evidence', 0)}/5")
-    print(f"         Density: {score_a.get('density', 0)}/5")
-    print(f"      Report B total: {score_b.get('total', 0)}/25")
-    print(f"         Granularity: {score_b.get('granularity', 0)}/5")
-    print(f"         Insight: {score_b.get('insight', 0)}/5")
-    print(f"         Critique: {score_b.get('critique', 0)}/5")
-    print(f"         Evidence: {score_b.get('evidence', 0)}/5")
-    print(f"         Density: {score_b.get('density', 0)}/5")
-    print(f"      Justification: {justification[:150]}...")
+    # Get model names
+    evaluated_model_name = report.get("model_name", "unknown")
+    
+    print(f"   ✅ Position-swap comparison complete:")
+    
+    # Translate semantic winners to actual model names for display
+    def translate_winner(winner):
+        if winner == 'evaluated_model':
+            return evaluated_model_name
+        elif winner == 'reference_model':
+            return REFERENCE_MODEL_NAME
+        else:
+            return 'tie'
+    
+    winner_1_display = translate_winner(winner_1)
+    winner_2_display = translate_winner(winner_2)
+    
+    print(f"      Comparison 1: {winner_1_display} wins")
+    print(f"      Comparison 2: {winner_2_display} wins")
+    print(f"")
+    
+    # Aggregate winner count
+    wins_evaluated = sum(1 for w in [winner_1, winner_2] if w == 'evaluated_model')
+    wins_reference = sum(1 for w in [winner_1, winner_2] if w == 'reference_model')
+    ties = sum(1 for w in [winner_1, winner_2] if w == 'tie')
+    
+    print(f"      📊 Winner count: {evaluated_model_name} wins {wins_evaluated}/2, "
+          f"{REFERENCE_MODEL_NAME} wins {wins_reference}/2, ties {ties}/2")
+    print(f"")
+    
+    # Display scores from raw comparisons (for debugging/informative purposes)
+    raw_1 = result.get("raw_comparison_1", {})
+    raw_2 = result.get("raw_comparison_2", {})
+    
+    if raw_1 and raw_2:
+        scores_1 = raw_1.get('scores', {})
+        scores_2 = raw_2.get('scores', {})
+        
+        # Average scores across both positions
+        # In comparison 1: A=evaluated, B=reference
+        # In comparison 2: A=reference, B=evaluated (swapped)
+        avg_evaluated = {}
+        avg_reference = {}
+        
+        dims = ['granularity', 'insight', 'critique', 'evidence', 'density']
+        for dim in dims:
+            score_eval_pos1 = scores_1.get('A', {}).get(dim, 0)  # Evaluated in position A
+            score_eval_pos2 = scores_2.get('B', {}).get(dim, 0)  # Evaluated in position B
+            avg_evaluated[dim] = (score_eval_pos1 + score_eval_pos2) / 2
+            
+            score_ref_pos1 = scores_1.get('B', {}).get(dim, 0)  # Reference in position B
+            score_ref_pos2 = scores_2.get('A', {}).get(dim, 0)  # Reference in position A
+            avg_reference[dim] = (score_ref_pos1 + score_ref_pos2) / 2
+        
+        avg_evaluated['total'] = sum(avg_evaluated[d] for d in dims)
+        avg_reference['total'] = sum(avg_reference[d] for d in dims)
+        
+        print(f"      📊 Scores (averaged across positions):")
+        print(f"         {evaluated_model_name}: {avg_evaluated['total']:.1f}/25")
+        print(f"            Granularity: {avg_evaluated['granularity']:.1f}/5 | "
+              f"Insight: {avg_evaluated['insight']:.1f}/5 | "
+              f"Critique: {avg_evaluated['critique']:.1f}/5")
+        print(f"            Evidence: {avg_evaluated['evidence']:.1f}/5 | "
+              f"Density: {avg_evaluated['density']:.1f}/5")
+        print(f"")
+        print(f"         {REFERENCE_MODEL_NAME}: {avg_reference['total']:.1f}/25")
+        print(f"            Granularity: {avg_reference['granularity']:.1f}/5 | "
+              f"Insight: {avg_reference['insight']:.1f}/5 | "
+              f"Critique: {avg_reference['critique']:.1f}/5")
+        print(f"            Evidence: {avg_reference['evidence']:.1f}/5 | "
+              f"Density: {avg_reference['density']:.1f}/5")
+        print(f"")
+    
+    print(f"      💬 Justification: {justification[:200]}...")
     
     print(f"\n✅ Test 5 Complete: Pairwise comparison for Depth")
     return [result]
@@ -392,7 +456,7 @@ async def test_depth_grading():
 async def run_all_tests():
     """Run all real grading tests"""
     print("\n" + "🧪"*40)
-    print("Real Integration Test: Grading with GPT-5")
+    print("Demo: Grading with GPT-5")
     print("🧪"*40)
     
     # Check API key

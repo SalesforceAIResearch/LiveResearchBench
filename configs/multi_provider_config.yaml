@@ -1,0 +1,37 @@
+# Multi-Provider Evaluation Configuration
+# Quick start configuration - modify as needed
+
+# Unique name for this evaluation run
+run_name: "evaluation_run_1"
+
+# Input JSON files (add your preprocessed files here)
+input_files:
+  - extracted_reports/reports_20250101_120000.json
+
+# Evaluation criteria
+criteria:
+  - presentation
+  - consistency
+  - coverage
+  - citation
+
+# Providers to use
+providers:
+  - openai
+  - gemini
+
+# Specific models for each provider
+models:
+  openai: gpt-5-2025-08-07
+  gemini: gemini-2.5-pro
+
+# Output directory
+output_dir: results
+
+# State tracking directory (for resume capability)
+state_dir: evaluation_state
+
+# Maximum concurrent API calls
+max_concurrent: 5
+
+

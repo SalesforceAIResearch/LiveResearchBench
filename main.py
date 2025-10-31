@@ -26,6 +26,29 @@ import sys
 from pathlib import Path
 from liveresearchbench.batch_evaluator import BatchEvaluator
 
+SUPPORTED_CRITERIA = {
+    'presentation', # Presentation & Organization
+    'coverage', # Coverage & Comprehensiveness
+    'consistency', # Factual & Logical Consistency
+    'citation', # Citation Association
+    'depth' # Analysis Depth
+}
+
+def validate_criteria(criteria_list):
+    """
+    Validate criteria and return supported/unsupported sets.
+    
+    Args:
+        criteria_list: List of criterion names
+        
+    Returns:
+        Tuple of (supported_criteria, unsupported_criteria)
+    """
+    criteria_set = set(criteria_list)
+    supported = criteria_set & SUPPORTED_CRITERIA
+    unsupported = criteria_set - SUPPORTED_CRITERIA
+    return supported, unsupported
+
 
 def main():
     parser = argparse.ArgumentParser(description="Grade research reports")
@@ -119,6 +142,24 @@ def main():
             with open(args.config) as f:
                 config = yaml.safe_load(f)
             
+            # Validate criteria from config
+            config_criteria = config.get('criteria', [])
+            supported, unsupported = validate_criteria(config_criteria)
+            
+            if unsupported:
+                print(f"\n⚠️  Warning: Unsupported criteria detected and will be skipped:")
+                for criterion in unsupported:
+                    print(f"   - {criterion}")
+                print(f"\n✅ Supported criteria: {', '.join(supported)}")
+                print(f"   Valid options: {', '.join(sorted(SUPPORTED_CRITERIA))}\n")
+                
+                if not supported:
+                    print("❌ Error: No valid criteria to evaluate!")
+                    return 1
+                
+                # Update config with only supported criteria
+                config['criteria'] = list(supported)
+            
             evaluator.evaluate_batch(
                 config=config,
                 run_id=args.run_id,
@@ -129,14 +170,28 @@ def main():
             if not args.input or not args.criteria:
                 parser.error("--input and --criteria required for single file mode")
             
-            criteria = args.criteria.split(",")
+            criteria = [c.strip() for c in args.criteria.split(",")]
+            
+            # Validate criteria
+            supported, unsupported = validate_criteria(criteria)
+            
+            if unsupported:
+                print(f"\n⚠️  Warning: Unsupported criteria detected and will be skipped:")
+                for criterion in unsupported:
+                    print(f"   - {criterion}")
+                print(f"\n✅ Supported criteria: {', '.join(supported)}")
+                print(f"   Valid options: {', '.join(sorted(SUPPORTED_CRITERIA))}\n")
+                
+                if not supported:
+                    print("❌ Error: No valid criteria to evaluate!")
+                    return 1
             
             print(f"📄 Processing single file: {args.input}")
-            print(f"🎯 Criteria: {', '.join(criteria)}")
+            print(f"🎯 Criteria: {', '.join(supported)}")
             
             evaluator.evaluate_single(
                 input_file=args.input,
-                criteria=criteria,
+                criteria=list(supported),
                 force_regrade=args.force_regrade
             )
         

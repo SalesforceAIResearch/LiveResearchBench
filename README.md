@@ -116,14 +116,12 @@ python main.py \
     --provider openai --model gpt-5-2025-08-07
 ```
 
-**3. Batch Grade All Models**
+**3. Multi-Provider Evaluation** (Recommended for reliability)
 
 ```bash
-# Single provider
-./scripts/batch_grade.sh my_experiment
-
-# Both providers (GPT-5 + Gemini) with averaging
-./scripts/batch_grade_multi_provider.sh my_experiment
+# Automated: Grades with both providers and averages results
+# With automatic resume on interruption
+python run_multi_provider_evaluation.py --config configs/multi_provider_config.yaml
 ```
 
 ## Evaluation Protocols
@@ -144,7 +142,7 @@ Based on our human alignment study, we adopt three different protocols:
 ### 3. Pairwise Comparison (Depth)
 - **Side-by-side comparison**: Compare two reports directly
 - **5 dimensions**: Granularity, Insight, Critique, Evidence, Density
-- **Three judges**: Majority voting for reliability
+- **Position-swap averaging**: Mitigates position bias by comparing in both directions
 
 ## Directory Structure
 
@@ -184,32 +182,58 @@ criteria:
   - coverage
   - citation
   - depth
-  # Note: Questions and checklists are automatically loaded from HuggingFace
 ```
 
 ## Advanced Usage
 
 ### Multi-Provider Grading & Averaging
 
-For more reliable results, grade with both GPT-5 and Gemini-2.5-Pro, then average:
+For more reliable results, grade with both GPT-5 and Gemini-2.5-Pro, then average.
+
+**Method 1: Automated with State Tracking (Recommended)**
 
 ```bash
-# Method 1: Automated script
-./scripts/batch_grade_multi_provider.sh my_experiment
+# 1. Copy and configure the multi-provider config
+cp configs/multi_provider_config.yaml.example configs/multi_provider_config.yaml
+# Edit the config file with your settings
 
-# Method 2: Manual
-python main.py --batch --config configs/batch_config.yaml \
-    --provider openai --model gpt-5-2025-08-07 \
-    --output-dir results/gpt5
+# 2. Run the evaluation (with automatic resume on interruption)
+python run_multi_provider_evaluation.py --config configs/multi_provider_config.yaml
 
-python main.py --batch --config configs/batch_config.yaml \
-    --provider gemini --model gemini-2.5-pro \
-    --output-dir results/gemini
+# If interrupted, simply run again to resume:
+python run_multi_provider_evaluation.py --config configs/multi_provider_config.yaml
 
+# Force restart from beginning:
+python run_multi_provider_evaluation.py --config configs/multi_provider_config.yaml --restart
+```
+
+**Features:**
+- ✅ Automatic state tracking and resume capability
+- ✅ Grades with multiple providers sequentially
+- ✅ Automatically averages results at the end
+- ✅ Handles interruptions gracefully
+- ✅ Tracks progress per file and per provider
+
+**Method 2: Manual Step-by-Step**
+
+```bash
+# Step 1: Grade with OpenAI
+python main.py \
+    --input extracted_reports/reports_20250101_120000.json \
+    --criteria presentation,consistency,citation,coverage \
+    --provider openai --model gpt-5-2025-08-07
+
+# Step 2: Grade with Gemini
+python main.py \
+    --input extracted_reports/reports_20250101_120000.json \
+    --criteria presentation,consistency,citation,coverage \
+    --provider gemini --model gemini-2.5-pro
+
+# Step 3: Average the summary files
 python average_results.py \
-    --input-a results/gpt5/reports_graded.json \
-    --input-b results/gemini/reports_graded.json \
-    --output results/reports_averaged.json
+    --input-a results/reports_20250101_120000_graded_openai_gpt-5-2025-08-07/summary_*.json \
+    --input-b results/reports_20250101_120000_graded_gemini_gemini-2.5-pro/summary_*.json \
+    --output results/averaged/summary_multi_judge.json
 ```
 
 ### Resume Interrupted Runs
@@ -253,52 +277,9 @@ Grading results are organized by input file name, with timestamped result files 
 
 ```
 results/
-└── reports_20251030_221703_graded_openai_gpt-5/
-    ├── summary_2025-10-31T01-38-49.407295.json
-    └── detailed_results_2025-10-31T01-38-49.407295.json
-```
-
-Directory naming: `{input_json_stem}_graded_{provider}_{model}/`
-File naming: `{filename}_{timestamp}.json` (ISO 8601 format)
-
-After grading completes, a summary is automatically printed to the terminal:
-
-```
-================================================================================
-📊 GRADING SUMMARY
-================================================================================
-
-🔍 Provider: openai
-🤖 Model: gpt-5-2025-08-07
-📅 Graded at: 2025-10-31T01:38:49.407295
-📝 Total reports: 2
-🎯 Criteria: coverage
-
---------------------------------------------------------------------------------
-📈 OVERALL RESULTS (across all models)
---------------------------------------------------------------------------------
-
-COVERAGE:
-  Mean:  38.89
-  Min:   0.00
-  Max:   77.78
-  Count: 2
-
---------------------------------------------------------------------------------
-🏆 RESULTS BY MODEL
---------------------------------------------------------------------------------
-
-📦 deerflow-multi-agent:
-  coverage:
-    Mean: 38.89 | Min: 0.00 | Max: 77.78 | Count: 2
-
-================================================================================
-💾 RESULTS SAVED TO:
-================================================================================
-📁 Directory: results/reports_20251030_221703_graded_openai_gpt-5-2025-08-07
-   ├── summary_2025-10-31T01-38-49.407295.json
-   └── detailed_results_2025-10-31T01-38-49.407295.json
-================================================================================
+└── reports_{json_file_name}_graded_{provider}_{model_name}/
+    ├── summary_{evaluation_timestamp}.json
+    └── detailed_results_{evaluation_timestamp}.json
 ```
 
 ### Summary File (`summary.json`)

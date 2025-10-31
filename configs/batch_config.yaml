@@ -4,24 +4,8 @@
 
 # List of all JSON files to process
 input_files:
-  - /export/xgen-small/mas_eval/report_outputs/extracted_reports_0917_multi_agent_odr_oai/reports_20250919_041431.json
-  - /export/xgen-small/mas_eval/single_agent_100_output/reports_20250919_062728.json
-  - /export/xgen-small/mas_eval/single_agent_100_output/reports_20250919_193026.json
-  - /export/xgen-small/mas_eval/single_agent_100_output/reports_20250920_045842.json
-  - /export/xgen-small/mas_eval/report_outputs/extracted_reports_0921_single_agent_grok_deep_research/reports_20250921_060632.json
-  - /export/xgen-small/mas_eval/report_outputs/extracted_reports_0921_single_agent_perplexity_sonar_deep_research/reports_20250921_072125.json
-  - /export/xgen-small/mas_eval/report_outputs/extracted_reports_0921_multi_agent_manus/reports_20250921_065629.json
-  - /export/xgen-small/mas_eval/report_outputs/extracted_reports_0920_single_agent_gemini_deep_research/reports_20250920_203959.json
-  - /export/xgen-small/mas_eval/report_outputs/extracted_reports_0921_single_agent_grok_mas_deep_research/reports_20250921_193457.json
-  - /export/xgen-small/mas_eval/report_outputs/extracted_reports_0921_single_agent_perplexity_sonar_reasoning/reports_20250922_092038.json
-  - /export/xgen-small/mas_eval/report_outputs/extracted_reports_0921_single_agent_gemini_pro/reports_20250922_224922.json
-  - /export/xgen-small/mas_eval/report_outputs/extracted_reports_0921_single_agent_gemini_flash/reports_20250922_225005.json
-  - /export/xgen-small/mas_eval/report_outputs/extracted_reports_0921_single_agent_claude-sonnet-4/reports_20250922_223333.json
-  - /export/xgen-small/mas_eval/report_outputs/extracted_reports_0921_single_agent_claude-opus-4-1/reports_20250922_223545.json
-  - /export/xgen-small/mas_eval/report_outputs/extracted_reports_0921_single_agent_perplexity_sonar_reasoning_pro2/reports_20250922_223740.json
-  - /export/xgen-small/mas_eval/report_outputs/extracted_reports_0921_single_agent_o3-deep-research/reports_20250922_224528.json
-  - /export/xgen-small/mas_eval/report_outputs/extracted_reports_0921_single_agent_o4-mini-deep-research/reports_20250922_224407.json
-  - /export/xgen-small/mas_eval/report_outputs/extracted_reports_0917_multi_agent_deerflow/reports_20250917_203355.json
+  - /path/to/preprocessed_reports_mapping_1.json
+  - /path/to/preprocessed_reports_mapping_2.json
 
 # Criteria to evaluate
 criteria:
