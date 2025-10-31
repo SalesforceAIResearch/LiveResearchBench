@@ -8,7 +8,7 @@ Usage:
     
     # Single file, multiple criteria
     python main.py --input reports.json \
-        --criteria presentation,coverage,consistency,citation \
+        --criteria presentation,coverage,consistency,citation,depth \
         --provider openai --model gpt-5-2025-08-07
     
     # Batch grade all models (from config)

@@ -117,10 +117,11 @@ class BatchEvaluator:
                               report_content: str, **kwargs) -> Dict[str, Any]:
         """Grade using checklist grader."""
         if criterion == 'coverage':
-            # Load checklists from HuggingFace
+            # Get benchmark data (should be pre-loaded with correct use_realtime setting)
             benchmark_data = kwargs.get('benchmark_data')
             if not benchmark_data:
-                # Load if not provided
+                # Fallback: load with default settings (should not happen in normal flow)
+                logger.warning("Benchmark data not pre-loaded, loading with use_realtime=False")
                 benchmark_data = load_liveresearchbench_dataset(use_realtime=False)
             
             qid = report_data.get('query_id', '')
@@ -138,7 +139,7 @@ class BatchEvaluator:
                 }
             
             result = await self.checklist_grader.grade_coverage_async(
-                query, report_content, checklists_for_qid['checklists'],
+                query, report_content, checklists_for_qid,
                 self.provider, self.model
             )
         else:  # presentation
@@ -163,6 +164,154 @@ class BatchEvaluator:
         result['graded_at'] = datetime.now().isoformat()
         return result
     
+    def _generate_summary(self, data: Dict[str, Any], criteria: List[str]) -> Dict[str, Any]:
+        """
+        Generate summary statistics from graded data.
+        
+        Args:
+            data: Full graded data
+            criteria: List of criteria that were evaluated
+            
+        Returns:
+            Summary dictionary with aggregated metrics
+        """
+        from collections import defaultdict
+        
+        reports = data.get('reports', [])
+        metadata = data.get('metadata', {})
+        
+        # Initialize statistics
+        model_stats = defaultdict(lambda: defaultdict(list))
+        overall_stats = defaultdict(list)
+        
+        # Collect metrics per model and criterion
+        for report in reports:
+            model_name = report.get('model_name', 'unknown')
+            query_id = report.get('query_id', 'unknown')
+            
+            for criterion in criteria:
+                result_key = f"{criterion}_grading_results"
+                if result_key not in report:
+                    continue
+                
+                results = report[result_key]
+                
+                # Extract metrics based on criterion type
+                if criterion in ['presentation', 'coverage']:
+                    # Checklist-based: use pass rate
+                    summary = results.get('summary', {})
+                    if 'average_pass_rate' in summary:
+                        score = summary['average_pass_rate']
+                    elif 'percentage_addressed' in summary:
+                        score = summary['percentage_addressed']
+                    else:
+                        continue
+                elif criterion in ['consistency', 'citation']:
+                    # Pointwise: use score
+                    score = results.get('score')
+                    if score is None:
+                        continue
+                else:
+                    continue
+                
+                model_stats[model_name][criterion].append(score)
+                overall_stats[criterion].append(score)
+        
+        # Calculate averages
+        model_averages = {}
+        for model_name, criteria_scores in model_stats.items():
+            model_averages[model_name] = {}
+            for criterion, scores in criteria_scores.items():
+                if scores:
+                    model_averages[model_name][criterion] = {
+                        'mean': sum(scores) / len(scores),
+                        'count': len(scores),
+                        'min': min(scores),
+                        'max': max(scores)
+                    }
+        
+        overall_averages = {}
+        for criterion, scores in overall_stats.items():
+            if scores:
+                overall_averages[criterion] = {
+                    'mean': sum(scores) / len(scores),
+                    'count': len(scores),
+                    'min': min(scores),
+                    'max': max(scores)
+                }
+        
+        # Build summary
+        summary = {
+            'metadata': {
+                'provider': self.provider,
+                'model': self.model or 'default',
+                'graded_at': datetime.now().isoformat(),
+                'total_reports': len(reports),
+                'criteria_evaluated': criteria,
+                'input_metadata': metadata
+            },
+            'results_by_model': model_averages,
+            'overall_results': overall_averages
+        }
+        
+        return summary
+    
+    def _print_summary_to_terminal(self, summary_data: Dict[str, Any], output_dir: str):
+        """
+        Print summary results to terminal in a readable format.
+        
+        Args:
+            summary_data: Summary dictionary
+            output_dir: Output directory path
+        """
+        print("\n" + "="*80)
+        print("📊 GRADING SUMMARY")
+        print("="*80)
+        
+        metadata = summary_data.get('metadata', {})
+        print(f"\n🔍 Provider: {metadata.get('provider', 'unknown')}")
+        print(f"🤖 Model: {metadata.get('model', 'unknown')}")
+        print(f"📅 Graded at: {metadata.get('graded_at', 'unknown')}")
+        print(f"📝 Total reports: {metadata.get('total_reports', 0)}")
+        print(f"🎯 Criteria: {', '.join(metadata.get('criteria_evaluated', []))}")
+        
+        # Print overall results
+        overall_results = summary_data.get('overall_results', {})
+        if overall_results:
+            print("\n" + "-"*80)
+            print("📈 OVERALL RESULTS (across all models)")
+            print("-"*80)
+            for criterion, stats in overall_results.items():
+                print(f"\n{criterion.upper()}:")
+                print(f"  Mean:  {stats.get('mean', 0):.2f}")
+                print(f"  Min:   {stats.get('min', 0):.2f}")
+                print(f"  Max:   {stats.get('max', 0):.2f}")
+                print(f"  Count: {stats.get('count', 0)}")
+        
+        # Print per-model results
+        results_by_model = summary_data.get('results_by_model', {})
+        if results_by_model:
+            print("\n" + "-"*80)
+            print("🏆 RESULTS BY MODEL")
+            print("-"*80)
+            for model_name, criteria_stats in results_by_model.items():
+                print(f"\n📦 {model_name}:")
+                for criterion, stats in criteria_stats.items():
+                    print(f"  {criterion}:")
+                    print(f"    Mean: {stats.get('mean', 0):.2f} | "
+                          f"Min: {stats.get('min', 0):.2f} | "
+                          f"Max: {stats.get('max', 0):.2f} | "
+                          f"Count: {stats.get('count', 0)}")
+        
+        # Print output location
+        print("\n" + "="*80)
+        print("💾 RESULTS SAVED TO:")
+        print("="*80)
+        print(f"📁 Directory: {output_dir}")
+        print(f"   ├── summary_{summary_data.get('metadata', {}).get('graded_at', '').replace(':', '-')}.json")
+        print(f"   └── detailed_results_{summary_data.get('metadata', {}).get('graded_at', '').replace(':', '-')}.json")
+        print("="*80 + "\n")
+    
     async def grade_json_file(self, json_file: str, criteria: List[str],
                              force_regrade: bool = False, **kwargs) -> str:
         """
@@ -182,6 +331,16 @@ class BatchEvaluator:
         
         reports = data.get('reports', [])
         logger.info(f"Found {len(reports)} reports")
+        
+        # Get use_realtime setting from metadata (for coverage criterion)
+        metadata = data.get('metadata', {})
+        use_realtime = metadata.get('use_realtime', False)
+        logger.info(f"📊 Using realtime mode: {use_realtime}")
+        
+        # Load benchmark data once for all coverage evaluations if needed
+        if 'coverage' in criteria and 'benchmark_data' not in kwargs:
+            logger.info(f"📥 Loading benchmark dataset (use_realtime={use_realtime})...")
+            kwargs['benchmark_data'] = load_liveresearchbench_dataset(use_realtime=use_realtime)
         
         # Grade each report for each criterion
         for criterion in criteria:
@@ -203,18 +362,30 @@ class BatchEvaluator:
             data['metadata'] = {}
         data['metadata'][f'{self.provider}_grading_completed_at'] = datetime.now().isoformat()
         
-        # Save output
-        os.makedirs(self.output_dir, exist_ok=True)
-        
+        # Create output directory based on input file name
         input_path = Path(json_file)
-        model_suffix = f"_{self.model.replace('/', '-')}" if self.model else ""
-        output_filename = f"{input_path.stem}_graded_{self.provider}{model_suffix}.json"
-        output_path = os.path.join(self.output_dir, output_filename)
+        model_suffix = f"_{self.model.replace('/', '__')}" if self.model else ""
+        run_dir_name = f"{input_path.stem}_graded_{self.provider}{model_suffix}"
+        run_output_dir = os.path.join(self.output_dir, run_dir_name)
+        os.makedirs(run_output_dir, exist_ok=True)
         
-        save_json(data, output_path)
-        logger.info(f"✅ Saved graded results to: {output_path}")
+        timestamp = datetime.now().isoformat().replace(':', '-')
         
-        return output_path
+        detailed_filename = f"detailed_results_{timestamp}.json"
+        detailed_output_path = os.path.join(run_output_dir, detailed_filename)
+        save_json(data, detailed_output_path)
+        logger.info(f"✅ Saved detailed results to: {detailed_output_path}")
+        
+        summary_data = self._generate_summary(data, criteria)
+        summary_filename = f"summary_{timestamp}.json"
+        summary_output_path = os.path.join(run_output_dir, summary_filename)
+        save_json(summary_data, summary_output_path)
+        logger.info(f"📊 Saved summary to: {summary_output_path}")
+        
+        # Print summary to terminal
+        self._print_summary_to_terminal(summary_data, run_output_dir)
+        
+        return run_output_dir
     
     def evaluate_single(self, input_file: str, criteria: List[str], force_regrade: bool = False):
         """

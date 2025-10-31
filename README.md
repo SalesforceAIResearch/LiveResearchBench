@@ -23,7 +23,9 @@ Each criterion uses the most appropriate evaluation protocol based on human alig
 git clone https://github.com/your-org/LiveResearchBench.git
 cd LiveResearchBench
 
-# Install dependencies with uv
+# Create virtual environment and install dependencies with uv
+uv venv
+source .venv/bin/activate
 uv sync
 
 # Configure API keys
@@ -33,22 +35,25 @@ cp .env.example .env
 #   GEMINI_API_KEY=your-key
 ```
 
-### Basic Usage
+### Basic usage to evaluate long-form reports
 
-**1. Preprocess Reports** (Extract MD files to JSON)
+**1. Preprocess Reports** (Create a JSON index mapping queries to report file locations)
 
 ```bash
-# Process all models in a directory
-python preprocess.py /path/to/model_outputs
+# Process all models in a directory (recommended: use --use-realtime for live benchmark queries)
+python preprocess.py /path/to/model_outputs --use-realtime
 
-# Or process specific models only
-python preprocess.py /path/to/model_outputs -m gpt-5-search gemini-pro
+# Or process specific models (subdirectories) only
+python preprocess.py /path/to/model_outputs -m gpt-5-search gemini-pro --use-realtime
 
 # With custom output directory
-python preprocess.py /path/to/model_outputs -o extracted_reports/
+python preprocess.py /path/to/model_outputs -o extracted_reports/ --use-realtime
+
+# Optional: Use static queries without placeholder replacement (not recommended for live evaluation)
+python preprocess.py /path/to/model_outputs
 ```
 
-**Expected directory structure:**
+**Expected input directory structure:**
 ```
 /path/to/model_outputs/
 ├── model_name_1/
@@ -60,19 +65,54 @@ python preprocess.py /path/to/model_outputs -o extracted_reports/
 │   └── ...
 ```
 
+**Expected output structure:**
+
+After preprocessing, a JSON file will be created in `extracted_reports/` (or the specified output directory) with the naming pattern `reports_{timestamp}.json`.
+
+The JSON structure includes:
+
+```json
+{
+  "metadata": {
+    "timestamp": "20250101_120000",              // When the preprocessing was performed
+    "total_reports": 300,                         // Total number of reports contained and processed
+    "total_models": 3,                           // Number of model outputs included
+    "base_path": "/path/to/model_outputs",       // Base path to report outputs directory
+    "use_realtime": true                        // Whether to replace query placeholders with real-time values
+  },
+  "reports": [
+    {
+      "model_name": "model-name-1",              // Model/system name (subdirectory name)
+      "query_id": "abc123xyz",               // Query identifier from the benchmark
+      "query": "Research query text...",         // Query loaded and processed from LiveResearchBench dataset
+      "report_file_path": "/path/to/model_outputs/model-name-1/qid_abc123xyz_report.md"
+    },
+    {
+      "model_name": "model-name-2",
+      "query_id": "def456uvw",
+      "query": "Another research query...",
+      "report_file_path": "/path/to/model_outputs/model-name-2/qid_def456uvw_report.md"
+    }
+    // ... more report entries
+  ]
+}
+```
+
+Each report entry contains the model name, query ID, full query text (loaded and processed from the LiveResearchBench dataset on HuggingFace), and the absolute path to the markdown report file.
+
 **2. Grade Single File**
 
 ```bash
 # Single criterion
 python main.py \
-    --input extracted_reports/reports_20250101_120000.json \
+    --input extracted_reports/reports_20250101_120000.json \ # the json file created from preprocessing
     --criteria presentation \
     --provider gemini
 
 # Multiple criteria
 python main.py \
     --input extracted_reports/reports_20250101_120000.json \
-    --criteria presentation,consistency,citation,coverage \
+    --criteria presentation,consistency,citation,coverage,depth \
     --provider openai --model gpt-5-2025-08-07
 ```
 
@@ -143,6 +183,7 @@ criteria:
   - consistency
   - coverage
   - citation
+  - depth
   # Note: Questions and checklists are automatically loaded from HuggingFace
 ```
 
@@ -206,7 +247,99 @@ GEMINI_API_KEY=AIza...
 
 ## Output Format
 
-### JSON Output
+### Output Directory Structure
+
+Grading results are organized by input file name, with timestamped result files inside:
+
+```
+results/
+└── reports_20251030_221703_graded_openai_gpt-5/
+    ├── summary_2025-10-31T01-38-49.407295.json
+    └── detailed_results_2025-10-31T01-38-49.407295.json
+```
+
+Directory naming: `{input_json_stem}_graded_{provider}_{model}/`
+File naming: `{filename}_{timestamp}.json` (ISO 8601 format)
+
+After grading completes, a summary is automatically printed to the terminal:
+
+```
+================================================================================
+📊 GRADING SUMMARY
+================================================================================
+
+🔍 Provider: openai
+🤖 Model: gpt-5-2025-08-07
+📅 Graded at: 2025-10-31T01:38:49.407295
+📝 Total reports: 2
+🎯 Criteria: coverage
+
+--------------------------------------------------------------------------------
+📈 OVERALL RESULTS (across all models)
+--------------------------------------------------------------------------------
+
+COVERAGE:
+  Mean:  38.89
+  Min:   0.00
+  Max:   77.78
+  Count: 2
+
+--------------------------------------------------------------------------------
+🏆 RESULTS BY MODEL
+--------------------------------------------------------------------------------
+
+📦 deerflow-multi-agent:
+  coverage:
+    Mean: 38.89 | Min: 0.00 | Max: 77.78 | Count: 2
+
+================================================================================
+💾 RESULTS SAVED TO:
+================================================================================
+📁 Directory: results/reports_20251030_221703_graded_openai_gpt-5-2025-08-07
+   ├── summary_2025-10-31T01-38-49.407295.json
+   └── detailed_results_2025-10-31T01-38-49.407295.json
+================================================================================
+```
+
+### Summary File (`summary.json`)
+
+Contains aggregated statistics:
+
+```json
+{
+  "metadata": {
+    "provider": "openai",
+    "model": "gpt-5-2025-08-07",
+    "graded_at": "2025-10-31T01:38:49.407295",
+    "total_reports": 10,
+    "criteria_evaluated": ["presentation", "coverage", "consistency", "citation"]
+  },
+  "results_by_model": {
+    "model-name-1": {
+      "presentation": {
+        "mean": 85.5,           // Average pass rate across all reports
+        "count": 5,             // Number of reports graded
+        "min": 70.0,
+        "max": 100.0
+      },
+      "coverage": { ... },
+      "consistency": { ... }
+    },
+    "model-name-2": { ... }
+  },
+  "overall_results": {
+    "presentation": {
+      "mean": 82.3,             // Average across all models/reports
+      "count": 10,
+      "min": 60.0,
+      "max": 100.0
+    },
+    // ... other criteria
+  }
+}
+```
+
+### Detailed Results File (`detailed_results.json`)
 
 Each report is augmented with grading results:
 
