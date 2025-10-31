@@ -1,6 +1,11 @@
 # LiveResearchBench
 
-This is the codebase for [LiveResearchBench: A Live Benchmark for User-Centric Deep Research in the Wild](https://arxiv.org/abs/2510.14240), a live benchmark for deep research agents, with expert-curated tasks spanning daily life, enterprise, and academia, each requiring extensive, real-time web search and analysis. The dataset is available on HuggingFace: **[Salesforce/LiveResearchBench](https://huggingface.co/datasets/Salesforce/LiveResearchBench)**.
+This is the codebase for [LiveResearchBench: A Live Benchmark for User-Centric Deep Research in the Wild](https://arxiv.org/abs/2510.14240), a live benchmark for deep research agents, with expert-curated tasks spanning daily life, enterprise, and academia, each requiring extensive, real-time web search and analysis. 
+
+<p align="center">
+    <img src="./imgs/task_domain_dist.png" width="100%"> <br>
+  Domain distribution and task coverage of LiveResearchBench.
+</p>
 
 ## Updates
 - Oct 31: Initial version. 
@@ -8,10 +13,6 @@ This is the codebase for [LiveResearchBench: A Live Benchmark for User-Centric D
 ## 🔍 About LiveResearchBench
 Deep research—producing comprehensive, citation-grounded reports by searching and synthesizing information from hundreds of live web sources---marks an important frontier for agentic systems. To rigorously evaluate this ability, four principles are essential: tasks should be (1) **user-centric**, reflecting realistic information needs, (2) **dynamic**, requiring up-to-date information beyond parametric knowledge, (3) **unambiguous**, ensuring consistent interpretation across users, and (4) multi-faceted and search-intensive, requiring search over numerous web sources and in-depth analysis. Existing benchmarks fall short of these principles, often focusing on narrow domains or posing ambiguous questions that hinder fair comparison. Guided by these principles, we introduce LiveResearchBench, a benchmark of 100 expert-curated tasks spanning daily life, enterprise, and academia, each requiring extensive, dynamic, real-time web search and synthesis. Built with over 1,500 hours of human labor, LiveResearchBench provides a rigorous basis for systematic evaluation. To evaluate citation-grounded long-form reports, we introduce **DeepEval**, a comprehensive suite covering both content- and report-level quality, including coverage, presentation, citation accuracy and association, consistency and depth of analysis. DeepEval integrates four complementary evaluation protocols, each designed to ensure stable assessment and high agreement with human judgments. Using LiveResearchBench and DeepEval, we conduct a comprehensive evaluation of 17 frontier deep research systems, including single-agent web search, single-agent deep research, and multi-agent systems. Our analysis reveals current strengths, recurring failure modes, and key system components needed to advance reliable, insightful deep research.
 
-<p align="center">
-    <img src="./imgs/task_domain_dist.png" width="80%"> <br>
-  Domain distribution and task coverage of LiveResearchBench.
-</p>
 
 📖 **For more details on the dataset structure, fields, and usage**, see [**DATASET.md**](docs/DATASET.md).
 
@@ -84,20 +85,20 @@ After preprocessing, a JSON file will be created in `extracted_reports/` (or the
 
 The JSON structure includes:
 
-```json
+```python
 {
   "metadata": {
-    "timestamp": "20250101_120000",              // When the preprocessing was performed
-    "total_reports": 300,                         // Total number of reports contained and processed
-    "total_models": 3,                           // Number of model outputs included
-    "base_path": "/path/to/model_outputs",       // Base path to report outputs directory
-    "use_realtime": true                        // Whether to replace query placeholders with real-time values
+    "timestamp": "20250101_120000",              # When the preprocessing was performed
+    "total_reports": 300,                         # Total number of reports contained and processed
+    "total_models": 3,                           # Number of model outputs included
+    "base_path": "/path/to/model_outputs",       # Base path to report outputs directory
+    "use_realtime": true                         # Whether to replace query placeholders with real-time values
   },
   "reports": [
     {
-      "model_name": "model-name-1",              // Model/system name (subdirectory name)
-      "query_id": "abc123xyz",               // Query identifier from the benchmark
-      "query": "Research query text...",         // Query loaded and processed from LiveResearchBench dataset
+      "model_name": "model-name-1",              # Model/system name (subdirectory name)
+      "query_id": "abc123xyz",                   # Query identifier from the benchmark
+      "query": "Research query text...",         # Query loaded and processed from LiveResearchBench dataset
       "report_file_path": "/path/to/model_outputs/model-name-1/qid_abc123xyz_report.md"
     },
     {
@@ -106,12 +107,10 @@ The JSON structure includes:
       "query": "Another research query...",
       "report_file_path": "/path/to/model_outputs/model-name-2/qid_def456uvw_report.md"
     }
-    // ... more report entries
+    # ... more report entries
   ]
 }
 ```
-
-Each report entry contains the model name, query ID, full query text (loaded and processed from the LiveResearchBench dataset on HuggingFace), and the absolute path to the markdown report file.
 
 **2. Grade Single File**
 
