@@ -18,6 +18,7 @@ extracted_reports*/
 !configs/*.json
 !data/**/*.csv
 
+
 # IDE
 .vscode/
 .idea/
@@ -32,4 +33,7 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Documentation 
+docs/DEPTH_EVALUATION.md
 

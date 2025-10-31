@@ -1,16 +1,35 @@
 # LiveResearchBench
 
-A comprehensive evaluation benchmark for AI-generated long-form research reports.
+This is the codebase for [LiveResearchBench: A Live Benchmark for User-Centric Deep Research in the Wild](https://arxiv.org/abs/2510.14240), a live benchmark for deep research agents, with expert-curated tasks spanning daily life, enterprise, and academia, each requiring extensive, real-time web search and analysis. The dataset is available on HuggingFace: **[Salesforce/LiveResearchBench](https://huggingface.co/datasets/Salesforce/LiveResearchBench)**.
 
-## Overview
+## Updates
+- Oct 31: Initial version. 
 
-LiveResearchBench evaluates research reports across **5 key criteria** using state-of-the-art LLM-as-a-judge methodologies:
+## 🔍 About LiveResearchBench
+Deep research—producing comprehensive, citation-grounded reports by searching and synthesizing information from hundreds of live web sources---marks an important frontier for agentic systems. 
+To rigorously evaluate this ability, four principles are essential: tasks should be (1) **user-centric**, reflecting realistic information needs, (2) **dynamic**, requiring up-to-date information beyond parametric knowledge, (3) **unambiguous**, ensuring consistent interpretation across users, and (4) multi-faceted and search-intensive, requiring search over numerous web sources and in-depth analysis. Existing benchmarks fall short of these principles, often focusing on narrow domains or posing ambiguous questions that hinder fair comparison. 
+Guided by these principles, we introduce LiveResearchBench, a benchmark of 100 expert-curated tasks spanning daily life, enterprise, and academia, each requiring extensive, dynamic, real-time web search and synthesis.
+Built with over 1,500 hours of human labor, LiveResearchBench provides a rigorous basis for systematic evaluation.
+To evaluate citation-grounded long-form reports, we introduce **DeepEval**, a comprehensive suite covering both content- and report-level quality, including coverage, presentation, citation accuracy and association, consistency and depth of analysis. DeepEval integrates four complementary evaluation protocols, each designed to ensure stable assessment and high agreement with human judgments.
+Using LiveResearchBench and DeepEval, we conduct a comprehensive evaluation of 17 frontier deep research systems, including single-agent web search, single-agent deep research, and multi-agent systems. 
+Our analysis reveals current strengths, recurring failure modes, and key system components needed to advance reliable, insightful deep research.
 
-- **❶ Presentation & Organization** (Checklist-based, binary 0/1)
-- **❷ Factual & Logical Consistency** (Pointwise/additive, score 10-100)
-- **❸ Coverage & Comprehensiveness** (Checklist-based, binary 0/1)
-- **❹ Analysis Depth** (Pairwise comparison, 5 dimensions)
-- **❺ Citation Association** (Pointwise/additive, score 10-100)
+<p align="center">
+    <img src="./imgs/task_domain_dist.png" width="80%"> <br>
+  Domain distribution and task coverage of LiveResearchBench.
+</p>
+
+📖 **For more details on the dataset structure, fields, and usage**, see [**DATASET.md**](docs/DATASET.md).
+
+## 🔍 About DeepEval
+
+DeepEval evaluates research reports across diverse criteria using state-of-the-art LLM-as-a-judges:
+
+- **Presentation & Organization** (Checklist-based)
+- **Factual & Logical Consistency** (Pointwise-additive)
+- **Coverage & Comprehensiveness** (Checklist-based)
+- **Analysis Depth** (Pairwise comparison)
+- **Citation Association** (Pointwise-additive)
 
 Each criterion uses the most appropriate evaluation protocol based on human alignment studies, ensuring high-quality, reliable assessments.
 
@@ -39,6 +58,18 @@ cp .env.example .env
 
 **1. Preprocess Reports** (Create a JSON index mapping queries to report file locations)
 
+**Expected input directory structure:**
+```
+/path/to/model_outputs/
+├── model_name_1/
+│   ├── qid_<qid>_report.md
+│   ├── qid_<qid>_report.md
+│   └── ...
+├── model_name_2/
+│   ├── qid_<qid>_report.md
+│   └── ...
+```
+
 ```bash
 # Process all models in a directory (recommended: use --use-realtime for live benchmark queries)
 python preprocess.py /path/to/model_outputs --use-realtime
@@ -51,18 +82,6 @@ python preprocess.py /path/to/model_outputs -o extracted_reports/ --use-realtime
 
 # Optional: Use static queries without placeholder replacement (not recommended for live evaluation)
 python preprocess.py /path/to/model_outputs
-```
-
-**Expected input directory structure:**
-```
-/path/to/model_outputs/
-├── model_name_1/
-│   ├── qid_<qid>_report.md
-│   ├── qid_<qid>_report.md
-│   └── ...
-├── model_name_2/
-│   ├── qid_<qid>_report.md
-│   └── ...
 ```
 
 **Expected output structure:**
@@ -363,14 +382,13 @@ Each report is augmented with grading results:
 
 ## Citation
 
-If you use LiveResearchBench in your research, please cite:
+If you find LiveResearchBench helpful, please consider citing:
 
 ```bibtex
-@article{liveresearchbench,
-  title   = {LiveResearchBench: A Live Benchmark for User-Centric Deep Research in the Wild},
-  author  = {Wang, Jiayu and Ming, Yifei and Dulepet, Riya and Chen, Qinglin and Xu, Austin and Ke, Zixuan and Sala, Frederic and Albarghouthi, Aws and Xiong, Caiming and Joty, Shafiq},
-  journal = {arXiv preprint arXiv:2510.14240},
-  year    = {2025},
-  url     = {https://arxiv.org/abs/2510.14240}
+@article{sfr2025liveresearchbench,
+      title={LiveResearchBench: A Live Benchmark for User-Centric Deep Research in the Wild}, 
+      author={Jiayu Wang and Yifei Ming and Riya Dulepet and Qinglin Chen and Austin Xu and Zixuan Ke and Frederic Sala and Aws Albarghouthi and Caiming Xiong and Shafiq Joty},
+  year={2025},
+  url={https://arxiv.org/abs/2510.14240}
 }
 ```
