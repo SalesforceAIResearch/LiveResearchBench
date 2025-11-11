@@ -9,9 +9,9 @@ DeepEval offers human-aligned protocols for reliable, systematic evaluation of a
 [![Paper](https://img.shields.io/badge/📖_Paper-red?style=for-the-badge)](https://arxiv.org/abs/2510.14240)
 [![Dataset](https://img.shields.io/badge/🤗_Dataset-green?style=for-the-badge)](https://huggingface.co/datasets/Salesforce/LiveResearchBench)
 
-## 💥 Updates
-- **[2025.10.31]** 🚀 DeepEval is here! Our evaluation framework for deep research agents is now live.
-- **[2025.10.23]** 📊 LiveResearchBench dataset is now available on [Huggingface](https://huggingface.co/datasets/Salesforce/LiveResearchBench)!
+## Updates
+- **[2025.10.31]** DeepEval is here! Our evaluation framework for deep research agents is now live.
+- **[2025.10.23]** LiveResearchBench dataset is now available on [Huggingface](https://huggingface.co/datasets/Salesforce/LiveResearchBench)!
 - **[2025.10.16]** 📢 LiveResearchBench is officially out on [arXiv](https://arxiv.org/abs/2510.14240)!
 
 ## 🔍 About LiveResearchBench
@@ -325,7 +325,7 @@ results/
 
 Contains aggregated statistics:
 
-```json
+```python
 {
   "metadata": {
     "provider": "openai",
@@ -337,8 +337,8 @@ Contains aggregated statistics:
   "results_by_model": {
     "model-name-1": {
       "presentation": {
-        "mean": 85.5,           // Average pass rate across all reports
-        "count": 5,             // Number of reports graded
+        "mean": 85.5,           # Average pass rate across all reports
+        "count": 5,             # Number of reports graded
         "min": 70.0,
         "max": 100.0
       },
@@ -349,7 +349,7 @@ Contains aggregated statistics:
   },
   "overall_results": {
     "presentation": {
-      "mean": 82.3,             // Average across all models/reports
+      "mean": 82.3,             # Average across all models/reports
       "count": 10,
       "min": 60.0,
       "max": 100.0
@@ -399,6 +399,9 @@ Each report is augmented with grading results:
   ]
 }
 ```
+## License
+
+The dataset is released for research purposes only under CC-BY-NC 4.0 and should not be used to develop models that compete with OpenAI. The evaluation code is released under Apache 2.0.
 
 ## Citation
 
