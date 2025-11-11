@@ -126,7 +126,7 @@ The JSON structure includes:
 python main.py \
     --input extracted_reports/reports_20250101_120000.json \ # the json file created from preprocessing
     --criteria presentation \
-    --provider gemini
+    --provider gemini --model gemini-2.5-pro
 
 # Multiple criteria
 python main.py \
