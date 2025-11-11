@@ -53,6 +53,111 @@ class BatchEvaluator:
         
         # Semaphore for concurrency control
         self.semaphore = asyncio.Semaphore(max_concurrent)
+        
+        # Incremental save state
+        self.incremental_save_dir = None
+        self.incremental_file_handles = {}
+        self.save_lock = asyncio.Lock()  # Lock for thread-safe file writing
+    
+    def _setup_incremental_save(self, json_file: str, criteria: List[str]):
+        """
+        Set up incremental save directory and JSONL files for each criterion.
+        
+        Args:
+            json_file: Input JSON file path
+            criteria: List of criteria to evaluate
+        """
+        input_path = Path(json_file)
+        model_suffix = f"_{self.model.replace('/', '__')}" if self.model else ""
+        run_dir_name = f"{input_path.stem}_graded_{self.provider}{model_suffix}"
+        self.incremental_save_dir = os.path.join(self.output_dir, run_dir_name, "incremental")
+        os.makedirs(self.incremental_save_dir, exist_ok=True)
+        
+        # Create JSONL file for each criterion
+        for criterion in criteria:
+            jsonl_path = os.path.join(self.incremental_save_dir, f"{criterion}_results.jsonl")
+            # Open in append mode to support resuming
+            self.incremental_file_handles[criterion] = open(jsonl_path, 'a', encoding='utf-8')
+        
+        logger.info(f"💾 Incremental saves enabled: {self.incremental_save_dir}")
+    
+    def _cleanup_incremental_save(self):
+        """Close all incremental save file handles."""
+        for handle in self.incremental_file_handles.values():
+            handle.close()
+        self.incremental_file_handles = {}
+    
+    async def _save_graded_report_incremental(self, report_data: Dict[str, Any], 
+                                             criterion: str, result: Dict[str, Any]):
+        """
+        Save a single graded report to JSONL file immediately.
+        
+        Args:
+            report_data: Original report data
+            criterion: Criterion that was graded
+            result: Grading result
+        """
+        if criterion not in self.incremental_file_handles:
+            logger.warning(f"No incremental file handle for criterion: {criterion}")
+            return
+        
+        # Create record with essential info + grading result
+        record = {
+            'query_id': report_data.get('query_id'),
+            'model_name': report_data.get('model_name'),
+            'report_file_path': report_data.get('report_file_path'),
+            'graded_at': datetime.now().isoformat(),
+            f'{criterion}_grading_results': result
+        }
+        
+        # Write to JSONL with lock to prevent concurrent write issues
+        async with self.save_lock:
+            try:
+                json_line = json.dumps(record, ensure_ascii=False)
+                self.incremental_file_handles[criterion].write(json_line + '\n')
+                self.incremental_file_handles[criterion].flush()  # Ensure it's written immediately
+                logger.debug(f"💾 Saved {report_data.get('query_id')} - {criterion} incrementally")
+            except Exception as e:
+                logger.error(f"Error saving incremental result: {e}")
+    
+    def _load_incremental_results(self, criteria: List[str]) -> Dict[str, Dict[str, Dict]]:
+        """
+        Load graded results from incremental JSONL files.
+        
+        Args:
+            criteria: List of criteria to load
+            
+        Returns:
+            Dict mapping {criterion: {query_id: grading_results}}
+        """
+        incremental_results = {}
+        
+        if not self.incremental_save_dir or not os.path.exists(self.incremental_save_dir):
+            return incremental_results
+        
+        for criterion in criteria:
+            jsonl_path = os.path.join(self.incremental_save_dir, f"{criterion}_results.jsonl")
+            if not os.path.exists(jsonl_path):
+                continue
+            
+            criterion_results = {}
+            try:
+                with open(jsonl_path, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        if line.strip():
+                            record = json.loads(line)
+                            query_id = record.get('query_id')
+                            result_key = f'{criterion}_grading_results'
+                            if query_id and result_key in record:
+                                # Store the most recent result for this query_id
+                                criterion_results[query_id] = record[result_key]
+                
+                incremental_results[criterion] = criterion_results
+                logger.info(f"📥 Loaded {len(criterion_results)} incremental results for {criterion}")
+            except Exception as e:
+                logger.error(f"Error loading incremental results for {criterion}: {e}")
+        
+        return incremental_results
     
     async def grade_single_report(self, report_data: Dict[str, Any], criterion: str,
                                  skip_existing: bool = True, **kwargs) -> Dict[str, Any]:
@@ -120,6 +225,10 @@ class BatchEvaluator:
                 # Add results to report data
                 report_data_copy = report_data.copy()
                 report_data_copy[result_key] = result
+                
+                # Save incrementally if enabled
+                if self.incremental_file_handles:
+                    await self._save_graded_report_incremental(report_data_copy, criterion, result)
                 
                 logger.info(f"✅ Graded {report_data.get('query_id', 'unknown')} - {criterion}")
                 return report_data_copy
@@ -449,7 +558,8 @@ class BatchEvaluator:
         print("="*80)
         print(f"📁 Directory: {output_dir}")
         print(f"   ├── summary_{summary_data.get('metadata', {}).get('graded_at', '').replace(':', '-')}.json")
-        print(f"   └── detailed_results_{summary_data.get('metadata', {}).get('graded_at', '').replace(':', '-')}.json")
+        print(f"   ├── detailed_results_{summary_data.get('metadata', {}).get('graded_at', '').replace(':', '-')}.json")
+        print(f"   └── incremental/  (JSONL files for each criterion)")
         print("="*80 + "\n")
     
     async def grade_json_file(self, json_file: str, criteria: List[str],
@@ -477,31 +587,53 @@ class BatchEvaluator:
         use_realtime = metadata.get('use_realtime', False)
         logger.info(f"📊 Using realtime mode: {use_realtime}")
         
-        # Load benchmark data once for all coverage evaluations if needed
-        if 'coverage' in criteria and 'benchmark_data' not in kwargs:
-            logger.info(f"📥 Loading benchmark dataset (use_realtime={use_realtime})...")
-            kwargs['benchmark_data'] = load_liveresearchbench_dataset(use_realtime=use_realtime)
+        # Setup incremental save
+        self._setup_incremental_save(json_file, criteria)
         
-        # Grade each report for each criterion
-        for criterion_idx, criterion in enumerate(criteria, 1):
-            logger.info(f"\n🎯 Grading criterion: {criterion} ({criterion_idx}/{len(criteria)})")
+        # Load any existing incremental results (for resuming interrupted runs)
+        if not force_regrade:
+            incremental_results = self._load_incremental_results(criteria)
             
-            tasks = [
-                self.grade_single_report(report, criterion, skip_existing=not force_regrade, **kwargs)
-                for report in reports
-            ]
+            # Pre-populate reports with existing results
+            for report in reports:
+                query_id = report.get('query_id')
+                for criterion in criteria:
+                    if criterion in incremental_results and query_id in incremental_results[criterion]:
+                        result_key = f"{criterion}_grading_results"
+                        if result_key not in report:  # Don't overwrite if already in original data
+                            report[result_key] = incremental_results[criterion][query_id]
+                            logger.debug(f"📥 Restored {query_id} - {criterion} from incremental save")
+        
+        try:
+            # Load benchmark data once for all coverage evaluations if needed
+            if 'coverage' in criteria and 'benchmark_data' not in kwargs:
+                logger.info(f"📥 Loading benchmark dataset (use_realtime={use_realtime})...")
+                kwargs['benchmark_data'] = load_liveresearchbench_dataset(use_realtime=use_realtime)
             
-            # Use tqdm.asyncio.gather for progress tracking
-            graded_reports = await atqdm.gather(
-                *tasks,
-                desc=f"Grading {criterion}",
-                total=len(tasks),
-                unit="report",
-                leave=True
-            )
-            
-            # Update reports in data
-            reports = graded_reports
+            # Grade each report for each criterion
+            for criterion_idx, criterion in enumerate(criteria, 1):
+                logger.info(f"\n🎯 Grading criterion: {criterion} ({criterion_idx}/{len(criteria)})")
+                
+                tasks = [
+                    self.grade_single_report(report, criterion, skip_existing=not force_regrade, **kwargs)
+                    for report in reports
+                ]
+                
+                # Use tqdm.asyncio.gather for progress tracking
+                graded_reports = await atqdm.gather(
+                    *tasks,
+                    desc=f"Grading {criterion}",
+                    total=len(tasks),
+                    unit="report",
+                    leave=True
+                )
+                
+                # Update reports in data
+                reports = graded_reports
+        
+        finally:
+            # Always cleanup file handles
+            self._cleanup_incremental_save()
         
         # Update metadata
         data['reports'] = reports
