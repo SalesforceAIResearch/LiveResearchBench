@@ -54,6 +54,7 @@ cp .env.example .env
 # Edit .env and add your API keys:
 #   OPENAI_API_KEY=your-key
 #   GEMINI_API_KEY=your-key
+#   HF_TOKEN=your-hf-token
 ```
 
 ### Basic usage to evaluate long-form reports
@@ -77,7 +78,7 @@ cp .env.example .env
 python preprocess.py /path/to/model_outputs --use-realtime
 
 # Or process specific models (subdirectories) only
-python preprocess.py /path/to/model_outputs -m gpt-5-search gemini-pro --use-realtime
+python preprocess.py /path/to/model_outputs -m gpt-5-search gemini-pro --use-realtime 
 
 # With custom output directory
 python preprocess.py /path/to/model_outputs -o extracted_reports/ --use-realtime
@@ -209,44 +210,20 @@ criteria:
 
 For more reliable results, grade with both GPT-5 and Gemini-2.5-Pro, then average.
 
-**Method 1: Automated with State Tracking (Recommended)**
-
-```bash
-# 1. Copy and configure the multi-provider config
-cp configs/multi_provider_config.yaml.example configs/multi_provider_config.yaml
-# Edit the config file with your settings
-
-# 2. Run the evaluation (with automatic resume on interruption)
-python run_multi_provider_evaluation.py --config configs/multi_provider_config.yaml
-
-# If interrupted, simply run again to resume:
-python run_multi_provider_evaluation.py --config configs/multi_provider_config.yaml
-
-# Force restart from beginning:
-python run_multi_provider_evaluation.py --config configs/multi_provider_config.yaml --restart
-```
-
-**Features:**
-- ✅ Automatic state tracking and resume capability
-- ✅ Grades with multiple providers sequentially
-- ✅ Automatically averages results at the end
-- ✅ Handles interruptions gracefully
-- ✅ Tracks progress per file and per provider
-
-**Method 2: Manual Step-by-Step**
-
 ```bash
 # Step 1: Grade with OpenAI
 python main.py \
     --input extracted_reports/reports_20250101_120000.json \
-    --criteria presentation,consistency,citation,coverage \
-    --provider openai --model gpt-5-2025-08-07
+    --criteria presentation,consistency,citation,coverage,depth \
+    --provider openai --model gpt-5-2025-08-07 \
+    --verbose
 
 # Step 2: Grade with Gemini
 python main.py \
     --input extracted_reports/reports_20250101_120000.json \
-    --criteria presentation,consistency,citation,coverage \
-    --provider gemini --model gemini-2.5-pro
+    --criteria presentation,consistency,citation,coverage,depth \
+    --provider gemini --model gemini-2.5-pro \
+    --verbose
 
 # Step 3: Average the summary files
 python average_results.py \
@@ -257,14 +234,47 @@ python average_results.py \
 
 ### Resume Interrupted Runs
 
-Grading automatically skips already-graded reports:
+**✨ Automatic Resume**: The system will save incremental JSONL saves! If your grading run is interrupted, simply **run the same command again** - it will automatically resume from where it left off.
 
 ```bash
-# Just run the same command again - it will resume
-python main.py --batch --config configs/batch_config.yaml --provider gemini
+# Original run (gets interrupted)
+python main.py \
+    --input extracted_reports/my_reports.json \
+    --criteria presentation,consistency,citation,coverage,depth \
+    --provider gemini \
+    --model gemini-2.5-pro
 
-# Or force re-grade everything
-python main.py --batch --config configs/batch_config.yaml --provider gemini --force-regrade
+# To resume: Just run the SAME command again!
+python main.py \
+    --input extracted_reports/my_reports.json \
+    --criteria presentation,consistency,citation,coverage,depth \
+    --provider gemini \
+    --model gemini-2.5-pro
+
+# The system will automatically:
+# 📥 Load existing results from incremental/ folder
+# ⏭️  Skip already graded reports
+# ✅ Continue grading only unfinished reports
+```
+
+**How It Works**: Each graded report is immediately saved to criterion-specific JSONL files in `results/{input}_graded_{provider}_{model}/incremental/`. When you re-run the command, these files are automatically detected and loaded.
+
+**Force Re-grade**: To ignore existing results and start fresh:
+```bash
+python main.py evaluate \
+    --input extracted_reports/my_reports.json \
+    --criteria presentation,coverage \
+    --provider gemini \
+    --force-regrade  # Ignores incremental saves
+```
+
+**Monitor Progress**: While grading is running, check real-time progress:
+```bash
+# Count completed reports
+wc -l results/*/incremental/*.jsonl
+
+# View latest result
+tail -1 results/my_reports_graded_gemini/incremental/presentation_results.jsonl | jq
 ```
 
 ### Filtering
@@ -292,14 +302,24 @@ GEMINI_API_KEY=AIza...
 
 ### Output Directory Structure
 
-Grading results are organized by input file name, with timestamped result files inside:
+Grading results are organized by input file name, with incremental saves and final timestamped result files:
 
 ```
 results/
 └── reports_{json_file_name}_graded_{provider}_{model_name}/
-    ├── summary_{evaluation_timestamp}.json
-    └── detailed_results_{evaluation_timestamp}.json
+    ├── incremental/
+    │   ├── presentation_results.jsonl    # Real-time saves per criterion
+    │   ├── coverage_results.jsonl
+    │   ├── consistency_results.jsonl
+    │   ├── citation_results.jsonl
+    │   └── depth_results.jsonl
+    ├── summary_{evaluation_timestamp}.json          # Final summary stats
+    └── detailed_results_{evaluation_timestamp}.json # Complete results with all criteria
 ```
+
+**Incremental JSONL Files**: Each graded report is immediately saved to criterion-specific JSONL files, ensuring no progress is lost if interrupted.
+
+**Final JSON Files**: Created when all grading completes, combining all results into convenient summary and detailed files.
 
 ### Summary File (`summary.json`)
 
