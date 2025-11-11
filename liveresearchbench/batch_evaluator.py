@@ -8,6 +8,8 @@ import pandas as pd
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 from datetime import datetime
+from tqdm import tqdm
+from tqdm.asyncio import tqdm as atqdm
 
 from liveresearchbench.common.io_utils import load_json, save_json, load_report_content
 from liveresearchbench.graders.checklist_grader import ChecklistGrader
@@ -481,15 +483,22 @@ class BatchEvaluator:
             kwargs['benchmark_data'] = load_liveresearchbench_dataset(use_realtime=use_realtime)
         
         # Grade each report for each criterion
-        for criterion in criteria:
-            logger.info(f"\n🎯 Grading criterion: {criterion}")
+        for criterion_idx, criterion in enumerate(criteria, 1):
+            logger.info(f"\n🎯 Grading criterion: {criterion} ({criterion_idx}/{len(criteria)})")
             
             tasks = [
                 self.grade_single_report(report, criterion, skip_existing=not force_regrade, **kwargs)
                 for report in reports
             ]
             
-            graded_reports = await asyncio.gather(*tasks)
+            # Use tqdm.asyncio.gather for progress tracking
+            graded_reports = await atqdm.gather(
+                *tasks,
+                desc=f"Grading {criterion}",
+                total=len(tasks),
+                unit="report",
+                leave=True
+            )
             
             # Update reports in data
             reports = graded_reports
@@ -560,17 +569,23 @@ class BatchEvaluator:
         if self.model:
             logger.info(f"  Model: {self.model}")
         
-        # Process each file
-        for i, json_file in enumerate(input_files, 1):
-            logger.info(f"\n{'='*60}")
-            logger.info(f"Processing file {i}/{len(input_files)}: {Path(json_file).name}")
-            logger.info(f"{'='*60}")
-            
-            try:
-                asyncio.run(self.grade_json_file(json_file, criteria, force_regrade))
-            except Exception as e:
-                logger.error(f"Error processing {json_file}: {e}")
-                continue
+        # Process each file with progress bar
+        with tqdm(total=len(input_files), desc="Processing files", unit="file", leave=True) as pbar:
+            for i, json_file in enumerate(input_files, 1):
+                file_name = Path(json_file).name
+                pbar.set_description(f"Processing {file_name}")
+                
+                logger.info(f"\n{'='*60}")
+                logger.info(f"Processing file {i}/{len(input_files)}: {file_name}")
+                logger.info(f"{'='*60}")
+                
+                try:
+                    asyncio.run(self.grade_json_file(json_file, criteria, force_regrade))
+                    pbar.update(1)
+                except Exception as e:
+                    logger.error(f"Error processing {json_file}: {e}")
+                    pbar.update(1)
+                    continue
         
         logger.info(f"\n✅ Batch evaluation complete!")
         logger.info(f"📁 Results saved to: {self.output_dir}")
