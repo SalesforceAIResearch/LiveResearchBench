@@ -1,6 +1,7 @@
 """Batch evaluator for grading multiple JSON files across multiple criteria."""
 
 import os
+import sys
 import json
 import asyncio
 import logging
@@ -21,6 +22,17 @@ from liveresearchbench.common.io_utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class TqdmLoggingHandler(logging.Handler):
+    """Custom logging handler that uses tqdm.write() to avoid progress bar interference."""
+    
+    def emit(self, record):
+        try:
+            msg = self.format(record)
+            tqdm.write(msg)
+        except Exception:
+            self.handleError(record)
 
 
 class BatchEvaluator:
@@ -176,7 +188,7 @@ class BatchEvaluator:
         # Check if already graded
         result_key = f"{criterion}_grading_results"
         if skip_existing and result_key in report_data:
-            logger.info(f"⏭️  Skipping already graded: {report_data.get('query_id', 'unknown')} - {criterion}")
+            logger.debug(f"⏭️  Skipping already graded: {report_data.get('query_id', 'unknown')} - {criterion}")
             return report_data
         
         # Load report content
@@ -595,6 +607,7 @@ class BatchEvaluator:
             incremental_results = self._load_incremental_results(criteria)
             
             # Pre-populate reports with existing results
+            restored_count = {criterion: 0 for criterion in criteria}
             for report in reports:
                 query_id = report.get('query_id')
                 for criterion in criteria:
@@ -602,7 +615,22 @@ class BatchEvaluator:
                         result_key = f"{criterion}_grading_results"
                         if result_key not in report:  # Don't overwrite if already in original data
                             report[result_key] = incremental_results[criterion][query_id]
+                            restored_count[criterion] += 1
                             logger.debug(f"📥 Restored {query_id} - {criterion} from incremental save")
+            
+            # Log resume summary if any results were restored
+            if any(count > 0 for count in restored_count.values()):
+                logger.info(f"\n{'='*60}")
+                logger.info(f"🔄 RESUMING FROM PREVIOUS RUN")
+                logger.info(f"{'='*60}")
+                for criterion in criteria:
+                    count = restored_count[criterion]
+                    remaining = len(reports) - count
+                    if count > 0:
+                        logger.info(f"  {criterion}: {count}/{len(reports)} already graded, {remaining} remaining")
+                    else:
+                        logger.info(f"  {criterion}: 0/{len(reports)} graded, starting fresh")
+                logger.info(f"{'='*60}\n")
         
         try:
             # Load benchmark data once for all coverage evaluations if needed
@@ -612,7 +640,16 @@ class BatchEvaluator:
             
             # Grade each report for each criterion
             for criterion_idx, criterion in enumerate(criteria, 1):
+                # Count how many reports already have this criterion graded
+                result_key = f"{criterion}_grading_results"
+                already_graded = sum(1 for r in reports if result_key in r)
+                to_grade = len(reports) - already_graded
+                
                 logger.info(f"\n🎯 Grading criterion: {criterion} ({criterion_idx}/{len(criteria)})")
+                if already_graded > 0:
+                    logger.info(f"   ⏭️  Skipping {already_graded} already graded, processing {to_grade} reports")
+                else:
+                    logger.info(f"   📝 Processing all {to_grade} reports")
                 
                 tasks = [
                     self.grade_single_report(report, criterion, skip_existing=not force_regrade, **kwargs)
