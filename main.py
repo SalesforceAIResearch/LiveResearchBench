@@ -4,25 +4,25 @@ Grade research reports across multiple criteria.
 
 Usage:
     # Single file, single criterion
-    python main.py --input reports.json --criteria presentation --provider gemini
+    python main.py --input reports.json --criteria presentation --provider gemini --model gemini-2.5-pro
     
     # Single file, multiple criteria
     python main.py --input reports.json \
         --criteria presentation,coverage,consistency,citation,depth \
         --provider openai --model gpt-5-2025-08-07
     
-    # Batch grade all models (from config)
-    python main.py --batch --config configs/batch_config.yaml \
-        --provider gemini --model gemini-2.5-pro
-    
-    # Resume existing run
-    python main.py --batch --config configs/batch_config.yaml \
-        --provider gemini --run-id experiment_v1
+    # Resume existing run by simply running the same command again
+    python main.py --input reports.json \
+        --criteria presentation,coverage,consistency,citation,depth \
+        --provider openai --model gpt-5-2025-08-07
+
+Note: reports.json is the output of the preprocessing script.
 """
 
 import argparse
 import yaml
 import sys
+import logging
 from pathlib import Path
 from liveresearchbench.batch_evaluator import BatchEvaluator
 
@@ -51,6 +51,18 @@ def validate_criteria(criteria_list):
 
 
 def main():
+    # Import TqdmLoggingHandler from batch_evaluator
+    from liveresearchbench.batch_evaluator import TqdmLoggingHandler
+    
+    # Configure logging with custom handler that works with tqdm
+    handler = TqdmLoggingHandler()
+    handler.setFormatter(logging.Formatter('%(message)s'))
+    
+    # Clear any existing handlers and add our custom one
+    logging.root.handlers = []
+    logging.root.addHandler(handler)
+    logging.root.setLevel(logging.INFO)
+    
     parser = argparse.ArgumentParser(description="Grade research reports")
     
     # Mode selection
@@ -122,6 +134,10 @@ def main():
     )
     
     args = parser.parse_args()
+    
+    # Set log level based on verbose flag
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
     
     # Create evaluator
     evaluator = BatchEvaluator(
