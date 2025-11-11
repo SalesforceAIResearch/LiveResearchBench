@@ -1,18 +1,25 @@
 # LiveResearchBench
 
-This is the codebase for [LiveResearchBench: A Live Benchmark for User-Centric Deep Research in the Wild](https://arxiv.org/abs/2510.14240), a live benchmark for deep research agents, with expert-curated tasks spanning daily life, enterprise, and academia, each requiring extensive, real-time web search and analysis. 
+This is the codebase for [LiveResearchBench: A Live Benchmark for User-Centric Deep Research in the Wild](https://arxiv.org/abs/2510.14240), including both the **LiveResearchBench benchmark** and the **DeepEval evaluation framework** for assessing deep research agents.
+LiveResearchBench provides expert-curated, real-world tasks spanning daily life, enterprise, and academia, each requiring extensive, real-time web search, multi-source reasoning, and cross-domain synthesis.
+DeepEval offers human-aligned protocols for reliable, systematic evaluation of agentic systems on open-ended deep research tasks.
 
+## 📌 Quick Links
+[![Project Page](https://img.shields.io/badge/🌐_Project_Page-blue?style=for-the-badge)](https://livedeepresearch.github.io/)
+[![Paper](https://img.shields.io/badge/📖_Paper-red?style=for-the-badge)](https://arxiv.org/abs/2510.14240)
+[![Dataset](https://img.shields.io/badge/🤗_Dataset-green?style=for-the-badge)](https://huggingface.co/datasets/Salesforce/LiveResearchBench)
+
+## 💥 Updates
+- **[2025.10.31]** 🚀 DeepEval is here! Our evaluation framework for deep research agents is now live.
+- **[2025.10.23]** 📊 LiveResearchBench dataset is now available on [Huggingface](https://huggingface.co/datasets/Salesforce/LiveResearchBench)!
+- **[2025.10.16]** 📢 LiveResearchBench is officially out on [arXiv](https://arxiv.org/abs/2510.14240)!
+
+## 🔍 About LiveResearchBench
+Deep research—producing comprehensive, citation-grounded reports by searching and synthesizing information from hundreds of live web sources---marks an important frontier for agentic systems. To rigorously evaluate this ability, four principles are essential: tasks should be (1) **user-centric**, reflecting realistic information needs, (2) **dynamic**, requiring up-to-date information beyond parametric knowledge, (3) **unambiguous**, ensuring consistent interpretation across users, and (4) multi-faceted and search-intensive, requiring search over numerous web sources and in-depth analysis. Existing benchmarks fall short of these principles, often focusing on narrow domains or posing ambiguous questions that hinder fair comparison. Guided by these principles, we introduce LiveResearchBench, a benchmark of 100 expert-curated tasks spanning daily life, enterprise, and academia, each requiring extensive, dynamic, real-time web search and synthesis. Built with over 1,500 hours of human labor, LiveResearchBench provides a rigorous basis for systematic evaluation. To evaluate citation-grounded long-form reports, we introduce **DeepEval**, a comprehensive suite covering both content- and report-level quality, including coverage, presentation, citation accuracy and association, consistency and depth of analysis. DeepEval integrates four complementary evaluation protocols, each designed to ensure stable assessment and high agreement with human judgments. Using LiveResearchBench and DeepEval, we conduct a comprehensive evaluation of 17 frontier deep research systems, including single-agent web search, single-agent deep research, and multi-agent systems. Our analysis reveals current strengths, recurring failure modes, and key system components needed to advance reliable, insightful deep research.
 <p align="center">
     <img src="./imgs/task_domain_dist.png" width="100%"> <br>
   Domain distribution and task coverage of LiveResearchBench.
 </p>
-
-## Updates
-- Oct 31: Initial version. 
-
-## 🔍 About LiveResearchBench
-Deep research—producing comprehensive, citation-grounded reports by searching and synthesizing information from hundreds of live web sources---marks an important frontier for agentic systems. To rigorously evaluate this ability, four principles are essential: tasks should be (1) **user-centric**, reflecting realistic information needs, (2) **dynamic**, requiring up-to-date information beyond parametric knowledge, (3) **unambiguous**, ensuring consistent interpretation across users, and (4) multi-faceted and search-intensive, requiring search over numerous web sources and in-depth analysis. Existing benchmarks fall short of these principles, often focusing on narrow domains or posing ambiguous questions that hinder fair comparison. Guided by these principles, we introduce LiveResearchBench, a benchmark of 100 expert-curated tasks spanning daily life, enterprise, and academia, each requiring extensive, dynamic, real-time web search and synthesis. Built with over 1,500 hours of human labor, LiveResearchBench provides a rigorous basis for systematic evaluation. To evaluate citation-grounded long-form reports, we introduce **DeepEval**, a comprehensive suite covering both content- and report-level quality, including coverage, presentation, citation accuracy and association, consistency and depth of analysis. DeepEval integrates four complementary evaluation protocols, each designed to ensure stable assessment and high agreement with human judgments. Using LiveResearchBench and DeepEval, we conduct a comprehensive evaluation of 17 frontier deep research systems, including single-agent web search, single-agent deep research, and multi-agent systems. Our analysis reveals current strengths, recurring failure modes, and key system components needed to advance reliable, insightful deep research.
-
 
 📖 **For more details on the dataset structure, fields, and usage**, see [**DATASET.md**](docs/DATASET.md).
 
