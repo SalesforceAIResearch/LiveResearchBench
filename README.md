@@ -252,9 +252,9 @@ python main.py \
     --model gemini-2.5-pro
 
 # The system will automatically:
-# 📥 Load existing results from incremental/ folder
-# ⏭️  Skip already graded reports
-# ✅ Continue grading only unfinished reports
+# Load existing results from incremental/ folder
+# Skip already graded reports
+# Continue grading only unfinished reports
 ```
 
 **How It Works**: Each graded report is immediately saved to criterion-specific JSONL files in `results/{input}_graded_{provider}_{model}/incremental/`. When you re-run the command, these files are automatically detected and loaded.
