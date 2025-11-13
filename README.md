@@ -127,13 +127,15 @@ The JSON structure includes:
 python main.py \
     --input extracted_reports/reports_20250101_120000.json \ # the json file created from preprocessing
     --criteria presentation \
-    --provider gemini --model gemini-2.5-pro
+    --provider gemini --model gemini-2.5-pro \
+    --verbose
 
 # Multiple criteria
 python main.py \
     --input extracted_reports/reports_20250101_120000.json \
     --criteria presentation,consistency,citation,coverage,depth \
-    --provider openai --model gpt-5-2025-08-07
+    --provider openai --model gpt-5 \
+    --verbose
 ```
 
 ## Evaluation Protocols
@@ -177,7 +179,7 @@ LiveResearchBench/
     └── run_all_tests.sh        # Test runner
 ```
 
-### Multi-Provider Grading & Averaging
+### Multi-Provider Grading 
 
 For more reliable results, grade with both GPT-5 and Gemini-2.5-Pro, then average.
 
