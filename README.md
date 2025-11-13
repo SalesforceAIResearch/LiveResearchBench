@@ -136,14 +136,6 @@ python main.py \
     --provider openai --model gpt-5-2025-08-07
 ```
 
-**3. Multi-Provider Evaluation** (Recommended for reliability)
-
-```bash
-# Automated: Grades with both providers and averages results
-# With automatic resume on interruption
-python run_multi_provider_evaluation.py --config configs/multi_provider_config.yaml
-```
-
 ## Evaluation Protocols
 
 Based on our human alignment study, we adopt three different protocols:
