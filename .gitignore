@@ -14,6 +14,7 @@ results_*/
 outputs/
 test_*/
 extracted_reports*/
+reference_reports_*/
 *.csv
 *.json
 !configs/*.json

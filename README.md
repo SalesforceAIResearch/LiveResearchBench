@@ -185,27 +185,6 @@ LiveResearchBench/
     └── run_all_tests.sh        # Test runner
 ```
 
-## Configuration
-
-### Batch Config (`configs/batch_config.yaml`)
-
-```yaml
-# List of JSON files to process
-input_files:
-  - /path/to/reports_model1.json
-  - /path/to/reports_model2.json
-
-# Criteria to evaluate
-criteria:
-  - presentation
-  - consistency
-  - coverage
-  - citation
-  - depth
-```
-
-## Advanced Usage
-
 ### Multi-Provider Grading & Averaging
 
 For more reliable results, grade with both GPT-5 and Gemini-2.5-Pro, then average.
@@ -316,10 +295,6 @@ results/
     ├── summary_{evaluation_timestamp}.json          # Final summary stats
     └── detailed_results_{evaluation_timestamp}.json # Complete results with all criteria
 ```
-
-**Incremental JSONL Files**: Each graded report is immediately saved to criterion-specific JSONL files, ensuring no progress is lost if interrupted.
-
-**Final JSON Files**: Created when all grading completes, combining all results into convenient summary and detailed files.
 
 ### Summary File (`summary.json`)
 
